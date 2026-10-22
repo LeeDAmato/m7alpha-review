@@ -170,6 +170,15 @@ footer .wrap { display: grid; gap: 6px; }
 .dec[aria-pressed="true"][data-d="approve"] { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
 .dec[aria-pressed="true"][data-d="change"] { border-color: var(--chg); background: var(--chg-soft); color: var(--chg); }
 .dec[aria-pressed="true"][data-d="comment"] { border-color: var(--teal-d); background: #e3f1f2; color: var(--teal-d); }
+.options { display: grid; gap: 8px; }
+.opt { border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 12px 14px; text-align: left; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: start; }
+.opt b { font-size: 15px; }
+.opt .opttext { grid-column: 1 / -1; white-space: pre-wrap; font-size: 14.5px; color: var(--ink-2); }
+.opt .tick { width: 22px; height: 22px; color: var(--line); grid-row: 1; grid-column: 2; }
+.opt .tick svg { width: 22px; height: 22px; }
+.opt[aria-pressed="true"] { border-color: var(--teal-d); background: #e3f1f2; }
+.opt[aria-pressed="true"] .tick { color: var(--teal-d); }
+.decide.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
 .tools { border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: grid; gap: 10px; background: #f8faf9; }
 .tools[hidden] { display: none; }
@@ -298,7 +307,9 @@ const DECISION = {
   approve: { label: "Looks good", past: "Approved", cls: "ok" },
   change: { label: "Change something", past: "Changes asked", cls: "chg" },
   comment: { label: "Just a comment", past: "Comment", cls: "wait" },
+  choose: { label: "Pick this", past: "Picked", cls: "ok" },
 };
+const optionLabel = (item, id) => item.choice?.options?.find((o) => o.id === id)?.label || id;
 
 // ---------- talking to the review store ----------
 async function rpc(fn, args) {
@@ -336,12 +347,13 @@ function visibleItems() {
 function statusOf(item) {
   const fb = (item.feedback || []).filter((f) => f.item_version === item.version && f.decision !== "comment");
   const last = fb[fb.length - 1];
-  return last ? { kind: last.decision, by: last.reviewer, at: last.created_at } : { kind: "wait" };
+  return last ? { kind: last.decision, by: last.reviewer, at: last.created_at, choice: last.choice } : { kind: "wait" };
 }
 function badge(item) {
   const st = statusOf(item);
   if (st.kind === "approve") return h("span", { class: "badge ok", text: "Approved by " + st.by });
   if (st.kind === "change") return h("span", { class: "badge chg", text: "Changes asked by " + st.by });
+  if (st.kind === "choose") return h("span", { class: "badge ok", text: `${st.by} picked “${optionLabel(item, st.choice)}”` });
   return h("span", { class: "badge wait", text: "Waiting for a look" });
 }
 
@@ -442,12 +454,13 @@ function renderApp() {
     }, g === "all" ? "Everything" : g))));
   }
   if (r.note) bar.append(h("div", { class: "note", text: r.note }));
-  const all = r.items, ok = all.filter((i) => statusOf(i).kind === "approve").length, chg = all.filter((i) => statusOf(i).kind === "change").length;
+  const all = r.items, ok = all.filter((i) => ["approve", "choose"].includes(statusOf(i).kind)).length, chg = all.filter((i) => statusOf(i).kind === "change").length;
   bar.append(h("div", { class: "progress" },
     h("span", {}, h("b", { text: all.length }), all.length === 1 ? " piece in this round" : " pieces in this round"),
     h("span", {}, h("i", { class: "dot", style: "background:#53c0aa" }), h("b", { text: ok }), " approved"),
     h("span", {}, h("i", { class: "dot", style: "background:#f19b1f" }), h("b", { text: chg }), " with changes"),
     h("span", {}, h("i", { class: "dot", style: "background:#c9d3d3" }), h("b", { text: all.length - ok - chg }), " waiting")));
+  if (all.some((i) => i.choice)) bar.lastChild.children[1].lastChild.textContent = " approved or picked";
   if (all.length && ok === all.length) {
     bar.append(h("div", { class: "done" }, "Everything in this round is ", h("span", { class: "hl play", text: "approved." }), " Thank you!"));
   }
@@ -505,7 +518,7 @@ function renderStory() {
 
   const segs = h("div", { class: "segs" }, items.map((x, i) => {
     const st = statusOf(x).kind;
-    return h("button", { type: "button", class: "seg" + (st === "approve" ? " ok" : st === "change" ? " chg" : "") + (i === S.story ? " on" : ""), "aria-label": `Go to ${i + 1}: ${x.title}`, onclick: () => { S.story = i; S.marking = false; renderStory(); } });
+    return h("button", { type: "button", class: "seg" + (st === "approve" || st === "choose" ? " ok" : st === "change" ? " chg" : "") + (i === S.story ? " on" : ""), "aria-label": `Go to ${i + 1}: ${x.title}`, onclick: () => { S.story = i; S.marking = false; renderStory(); } });
   }));
   const top = h("div", { class: "s-top" }, segs, h("div", { class: "s-head" },
     h("span", { class: "n", text: `${S.story + 1} of ${items.length}` }),
@@ -541,13 +554,29 @@ function renderStory() {
   }
   if (it.caption) panel.append(h("div", { class: "label", text: "Caption" }), h("p", { class: "cap", text: it.caption }));
 
-  panel.append(h("div", { class: "label", text: "What do you think?" }));
-  const decide = h("div", { class: "decide" }, Object.entries(DECISION).map(([k, d]) => h("button", {
+  const choice = it.choice?.options?.length ? it.choice : null;
+  if (choice) {
+    panel.append(h("div", { class: "label", text: choice.question || (choice.kind === "texts" ? "Which words do you prefer?" : "Which one do you prefer?") }),
+      h("div", { class: "options" }, choice.options.map((o) => h("button", {
+        type: "button", class: "opt", "aria-pressed": String(draft.decision === "choose" && draft.choice === o.id),
+        onclick: () => {
+          const dr = getDraft(it), same = dr.decision === "choose" && dr.choice === o.id;
+          dr.decision = same ? null : "choose"; dr.choice = same ? null : o.id; putDraft(it, dr);
+          if (choice.kind === "versions" && !same && it.media.some((m) => m.id === o.id)) S.variant[it.id] = o.id;
+          renderStory();
+        },
+      }, h("b", { text: o.label }), h("span", { class: "tick", html: ICON.approve }), o.text ? h("span", { class: "opttext", text: o.text }) : null))),
+      h("div", { class: "label", text: "Or" }));
+  } else {
+    panel.append(h("div", { class: "label", text: "What do you think?" }));
+  }
+  const kinds = Object.entries(DECISION).filter(([k]) => k !== "choose" && !(choice && k === "approve"));
+  const decide = h("div", { class: "decide" + (choice ? " two" : "") }, kinds.map(([k, d]) => h("button", {
     type: "button", class: "dec", "data-d": k, "aria-pressed": String(draft.decision === k),
-    onclick: (e) => { const dr = getDraft(it); dr.decision = dr.decision === k ? null : k; putDraft(it, dr); decide.querySelectorAll(".dec").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.d === dr.decision))); updateSend(); if (k !== "approve" && dr.decision) comment.focus(); },
-  }, h("span", { html: ICON[k] }), d.label)));
+    onclick: (e) => { const dr = getDraft(it); dr.decision = dr.decision === k ? null : k; dr.choice = null; putDraft(it, dr); if (choice) return renderStory(); decide.querySelectorAll(".dec").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.d === dr.decision))); updateSend(); if (k !== "approve" && dr.decision) comment.focus(); },
+  }, h("span", { html: ICON[k] }), choice && k === "change" ? "None of these" : d.label)));
   panel.append(decide);
-  const comment = h("textarea", { class: "field", placeholder: "Anything you'd like to say or change? (optional if it looks good)", "aria-label": "Your note" });
+  const comment = h("textarea", { class: "field", placeholder: choice ? "Want a mix? Tell us what to take from each one. (optional)" : "Anything you'd like to say or change? (optional if it looks good)", "aria-label": "Your note" });
   comment.value = draft.comment || "";
   comment.addEventListener("input", () => { const dr = getDraft(it); dr.comment = comment.value; putDraft(it, dr); updateSend(); });
   panel.append(comment);
@@ -598,7 +627,7 @@ function renderStory() {
       const m = f.marks || {}, hasMarks = (m.strokes?.length || 0) + (m.pins?.length || 0) > 0;
       const variantLabel = it.media.find((x) => x.id === f.variant_id)?.label;
       return h("div", { class: "fb" },
-        h("div", { class: "h" }, h("b", { text: f.reviewer }), h("span", { class: "badge " + DECISION[f.decision].cls, text: DECISION[f.decision].past }),
+        h("div", { class: "h" }, h("b", { text: f.reviewer }), h("span", { class: "badge " + DECISION[f.decision].cls, text: f.decision === "choose" ? `Picked “${optionLabel(it, f.choice)}”` : DECISION[f.decision].past }),
           h("span", { class: "meta", text: fmtDate(f.created_at) + (variantLabel && it.media.length > 1 ? " · " + variantLabel : "") }),
           f.item_version !== it.version ? h("span", { class: "old", text: "On version " + f.item_version }) : null),
         f.comment ? h("p", { text: f.comment }) : null,
@@ -618,7 +647,7 @@ function renderStory() {
 function canSend(it) {
   const d = getDraft(it);
   const hasMarks = Object.values(d.marks || {}).some((m) => m.strokes.length || m.pins.length);
-  if (d.decision === "approve") return true;
+  if (d.decision === "approve" || (d.decision === "choose" && d.choice)) return true;
   return !!(d.comment?.trim() || hasMarks);
 }
 
@@ -753,10 +782,10 @@ async function send(it, status, btn) {
   try {
     for (const j of jobs) {
       const marks = j.marks && (j.marks.strokes.length || j.marks.pins.length) ? j.marks : null;
-      const res = await rpc("submit_feedback", { p_code: S.code, p_passcode: S.pass, p_item_id: it.id, p_item_version: it.version, p_variant_id: j.variant, p_reviewer: name, p_decision: j.decision, p_comment: j.comment, p_marks: marks });
+      const res = await rpc("submit_feedback", { p_code: S.code, p_passcode: S.pass, p_item_id: it.id, p_item_version: it.version, p_variant_id: j.variant, p_reviewer: name, p_decision: j.decision, p_comment: j.comment, p_marks: marks, p_choice: j.decision === "choose" ? d.choice : null });
       if (res.error === "stale") { status.className = "status err"; status.textContent = "This piece was just updated. We've loaded the new version. Please have another look."; S.sending = false; await load({ quiet: true }); return; }
       if (!res.ok) throw new Error(res.error || "not saved");
-      if (j === jobs[0]) { d.decision = null; d.comment = ""; }
+      if (j === jobs[0]) { d.decision = null; d.comment = ""; d.choice = null; }
       delete d.marks[j.variant]; putDraft(it, d);
     }
     store.set(draftKey(it), null);
@@ -765,7 +794,7 @@ async function send(it, status, btn) {
     await load({ quiet: true });          // read it back from the store, so what you see is what was saved
     const st = story.querySelector(".status");
     if (st) { st.className = "status ok"; st.textContent = `Sent. Thank you, ${name}!`; }
-    if (decision === "approve" && !wasLast) setTimeout(() => { if (S.story >= 0) go(1); }, 700);
+    if ((decision === "approve" || decision === "choose") && !wasLast) setTimeout(() => { if (S.story >= 0) go(1); }, 700);
   } catch (e) {
     S.sending = false; btn.disabled = false;
     status.className = "status err"; status.textContent = "That didn't send. Please check your connection and try again. Your note is kept here.";
