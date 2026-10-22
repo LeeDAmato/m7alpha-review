@@ -145,6 +145,7 @@ footer .wrap { display: grid; gap: 6px; }
 .seg.on { background: #fff; box-shadow: 0 0 0 1px #fff; }
 .s-head { display: flex; align-items: center; gap: 12px; }
 .s-head .n { font-size: 13px; color: rgba(255,255,255,.7); font-weight: 600; white-space: nowrap; }
+.s-head .rname { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.6); overflow: hidden; text-overflow: ellipsis; }
 .s-head .t { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .iconbtn { width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .iconbtn:hover { background: rgba(255,255,255,.22); }
@@ -342,12 +343,13 @@ function rounds() { return S.data?.rounds || []; }
 function currentRound() { return rounds().find((r) => r.id === S.roundId) || rounds()[0] || null; }
 // rounds run newest first, so the "next" round is the one after the current one in the list
 function nextRound() { const rs = rounds(), i = rs.findIndex((r) => r.id === currentRound()?.id); return i >= 0 ? rs[i + 1] || null : null; }
+function prevRound() { const rs = rounds(), i = rs.findIndex((r) => r.id === currentRound()?.id); return i > 0 ? rs[i - 1] : null; }
 function roundDone(r) { return !!r && r.items.length > 0 && r.items.every((i) => statusOf(i).kind !== "wait"); }
-function openRound(r, inStory) {
+function openRound(r, inStory, atEnd) {
   S.roundId = r.id; S.group = "all"; S.marking = false;
   if (!inStory) { renderApp(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
   const first = r.items.findIndex((i) => statusOf(i).kind === "wait");
-  S.story = Math.max(0, first); renderApp(); renderStory();
+  S.story = atEnd ? r.items.length - 1 : Math.max(0, first); renderApp(); renderStory();
 }
 function groupsOf(round) { return [...new Set((round?.items || []).map((i) => i.group).filter(Boolean))]; }
 function visibleItems() {
@@ -516,6 +518,7 @@ window.addEventListener("popstate", () => { if (S.story >= 0) closeStory(true); 
 function go(delta) {
   const n = visibleItems().length, next = S.story + delta;
   if (next >= n && nextRound()) return openRound(nextRound(), true);
+  if (next < 0 && prevRound()) return openRound(prevRound(), true, true);     // back from a round's first card returns to the end of the round before
   if (next < 0 || next >= n) return;
   S.story = next; S.marking = false; renderStory();
 }
@@ -536,7 +539,7 @@ function renderStory() {
   }));
   const top = h("div", { class: "s-top" }, segs, h("div", { class: "s-head" },
     h("span", { class: "n", text: `${S.story + 1} of ${items.length}` }),
-    h("span", { class: "t", text: it.title }),
+    h("span", { class: "t" }, it.title, rounds().length > 1 ? h("small", { class: "rname", text: `Round ${rounds().findIndex((r) => r.id === currentRound().id) + 1} of ${rounds().length}: ${currentRound().title}` }) : null),
     h("button", { type: "button", class: "iconbtn", "aria-label": "Close and see them all", html: ICON.close, onclick: () => closeStory() })));
 
   // the artwork, with its drawing layer
@@ -549,7 +552,7 @@ function renderStory() {
   if (mediaEl) frame.append(mediaEl);
   frame.append(svg);
   const stage = h("div", { class: "stage" },
-    h("button", { type: "button", class: "iconbtn navbtn prev", "aria-label": "Previous", html: ICON.left, disabled: S.story === 0, onclick: () => go(-1) }),
+    h("button", { type: "button", class: "iconbtn navbtn prev", "aria-label": "Previous", html: ICON.left, disabled: S.story === 0 && !prevRound(), onclick: () => go(-1) }),
     frame,
     h("button", { type: "button", class: "iconbtn navbtn next", "aria-label": "Next", html: ICON.right, disabled: S.story === items.length - 1 && !nextRound(), onclick: () => go(1) }));
   wireStage(stage, frame, svg, it, v, W, H);
@@ -830,7 +833,7 @@ function hideToast() { toast.hidden = true; }
 // ---------- keys ----------
 document.addEventListener("keydown", (e) => {
   if (S.story < 0 || !$("#modal").hidden) return;
-  if (e.target.closest("input, textarea")) { if (e.key === "Escape") e.target.blur(); return; }
+  if (e.target.closest?.("input, textarea, select")) { if (e.key === "Escape") e.target.blur(); return; }
   if (e.key === "ArrowRight") go(1);
   else if (e.key === "ArrowLeft") go(-1);
   else if (e.key === "Escape") { if (S.marking) { S.marking = false; renderStory(); } else closeStory(); }
