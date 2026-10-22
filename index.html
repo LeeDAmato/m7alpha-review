@@ -162,6 +162,8 @@ footer .wrap { display: grid; gap: 6px; }
 .panel { background: #fff; color: var(--ink); overflow-y: auto; padding: 20px 20px 40px; display: grid; gap: 16px; align-content: start; border-radius: 18px 0 0 0; }
 .panel h2 { margin: 0; font-size: 22px; line-height: 1.25; letter-spacing: -.015em; }
 .panel .cap { white-space: pre-wrap; font-size: 15px; color: var(--ink-2); background: #f6f8f7; border-radius: 12px; padding: 12px 14px; margin: 0; }
+.mnote { border-left: 4px solid var(--yellow); background: #fdf6dc; border-radius: 4px 12px 12px 4px; padding: 10px 14px; display: grid; gap: 2px; font-size: 14.5px; white-space: pre-wrap; }
+.mnote b { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 .variants { display: flex; flex-wrap: wrap; gap: 6px; }
 .label { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 -8px; }
 .decide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -338,6 +340,15 @@ const undoStacks = {};        // in memory only: redo history per item+variant
 
 function rounds() { return S.data?.rounds || []; }
 function currentRound() { return rounds().find((r) => r.id === S.roundId) || rounds()[0] || null; }
+// rounds run newest first, so the "next" round is the one after the current one in the list
+function nextRound() { const rs = rounds(), i = rs.findIndex((r) => r.id === currentRound()?.id); return i >= 0 ? rs[i + 1] || null : null; }
+function roundDone(r) { return !!r && r.items.length > 0 && r.items.every((i) => statusOf(i).kind !== "wait"); }
+function openRound(r, inStory) {
+  S.roundId = r.id; S.group = "all"; S.marking = false;
+  if (!inStory) { renderApp(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  const first = r.items.findIndex((i) => statusOf(i).kind === "wait");
+  S.story = Math.max(0, first); renderApp(); renderStory();
+}
 function groupsOf(round) { return [...new Set((round?.items || []).map((i) => i.group).filter(Boolean))]; }
 function visibleItems() {
   const r = currentRound(); if (!r) return [];
@@ -462,7 +473,9 @@ function renderApp() {
     h("span", {}, h("i", { class: "dot", style: "background:#c9d3d3" }), h("b", { text: all.length - ok - chg }), " waiting")));
   if (all.some((i) => i.choice)) bar.lastChild.children[1].lastChild.textContent = " approved or picked";
   if (all.length && ok === all.length) {
-    bar.append(h("div", { class: "done" }, "Everything in this round is ", h("span", { class: "hl play", text: "approved." }), " Thank you!"));
+    const nr = nextRound();
+    bar.append(h("div", { class: "done" }, "Everything in this round is ", h("span", { class: "hl play", text: "approved." }), " Thank you!",
+      nr ? h("div", { class: "actions", style: "margin-top:12px" }, ctaBtn("Next round: " + nr.title, "pill", () => openRound(nr, false))) : null));
   }
 
   const grid = h("section", { class: "grid", id: "grid" }, items.map((it, i) => {
@@ -502,6 +515,7 @@ window.addEventListener("resize", () => { if (S.story >= 0) S.redraw?.(); });
 window.addEventListener("popstate", () => { if (S.story >= 0) closeStory(true); });
 function go(delta) {
   const n = visibleItems().length, next = S.story + delta;
+  if (next >= n && nextRound()) return openRound(nextRound(), true);
   if (next < 0 || next >= n) return;
   S.story = next; S.marking = false; renderStory();
 }
@@ -537,7 +551,7 @@ function renderStory() {
   const stage = h("div", { class: "stage" },
     h("button", { type: "button", class: "iconbtn navbtn prev", "aria-label": "Previous", html: ICON.left, disabled: S.story === 0, onclick: () => go(-1) }),
     frame,
-    h("button", { type: "button", class: "iconbtn navbtn next", "aria-label": "Next", html: ICON.right, disabled: S.story === items.length - 1, onclick: () => go(1) }));
+    h("button", { type: "button", class: "iconbtn navbtn next", "aria-label": "Next", html: ICON.right, disabled: S.story === items.length - 1 && !nextRound(), onclick: () => go(1) }));
   wireStage(stage, frame, svg, it, v, W, H);
 
   // the panel: details, decision, comment, drawing tools, earlier notes
@@ -552,6 +566,7 @@ function renderStory() {
       onclick: () => { S.variant[it.id] = m.id; renderStory(); },
     }))));
   }
+  if (it.note) panel.append(h("div", { class: "mnote" }, h("b", { text: "Note from M7Alpha" }), h("span", { text: it.note })));
   if (it.caption) panel.append(h("div", { class: "label", text: "Caption" }), h("p", { class: "cap", text: it.caption }));
 
   const choice = it.choice?.options?.length ? it.choice : null;
@@ -616,7 +631,9 @@ function renderStory() {
   // send
   const status = h("div", { class: "status", role: "status" });
   const sendBtn = ctaBtn("Send to M7Alpha", "pill", () => send(it, status, sendBtn));
-  panel.append(h("div", { class: "send" }, h("div", { class: "actions" }, sendBtn, S.story < items.length - 1 ? ctaBtn("Next", "white", () => go(1)) : null), status));
+  const nr = nextRound();
+  panel.append(h("div", { class: "send" }, h("div", { class: "actions" }, sendBtn,
+    S.story < items.length - 1 ? ctaBtn("Next", "white", () => go(1)) : nr ? ctaBtn("Next round: " + nr.title, "white", () => openRound(nr, true)) : null), status));
   function updateSend() { sendBtn.disabled = S.sending || !canSend(it); }
   updateSend();
 
@@ -794,7 +811,11 @@ async function send(it, status, btn) {
     await load({ quiet: true });          // read it back from the store, so what you see is what was saved
     const st = story.querySelector(".status");
     if (st) { st.className = "status ok"; st.textContent = `Sent. Thank you, ${name}!`; }
-    if ((decision === "approve" || decision === "choose") && !wasLast) setTimeout(() => { if (S.story >= 0) go(1); }, 700);
+    const nr = nextRound();
+    if (roundDone(currentRound()) && nr) {
+      if (st) st.textContent = `Sent. That's this round done, thank you! Next: ${nr.title}.`;
+      setTimeout(() => { if (S.story >= 0) openRound(nr, true); }, 1600);
+    } else if ((decision === "approve" || decision === "choose") && !wasLast) setTimeout(() => { if (S.story >= 0) go(1); }, 700);
   } catch (e) {
     S.sending = false; btn.disabled = false;
     status.className = "status err"; status.textContent = "That didn't send. Please check your connection and try again. Your note is kept here.";

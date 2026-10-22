@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>M7Alpha Review Editor</title>
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+/* M7Alpha review editor: where M7Alpha adds clients, rounds and pieces, and reads feedback.
+   Only signed-in editors (public.editors) can change anything; the database enforces it. */
+:root {
+  --teal: #479aa4; --teal-d: #2c6a72; --mint: #53c0aa; --yellow: #efc319; --orange: #f19b1f;
+  --ink: #111214; --ink-2: #4a5557; --ink-3: #7d8789; --line: #dfe6e6; --bg: #f5f7f6; --card: #fff;
+  --ok: #1f8a5b; --ok-soft: #dff3ea; --chg: #b45d00; --chg-soft: #fdeed8; --err: #b8432f;
+  --shadow: 0 1px 2px rgba(17, 18, 20, .05), 0 6px 18px rgba(17, 18, 20, .05);
+  --font: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); font-size: 15px; line-height: 1.5; color: var(--ink); background: var(--bg); }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.top { background: #fff; border-bottom: 1px solid var(--line); }
+.top .in { max-width: 1320px; margin: 0 auto; padding: 12px max(16px, env(safe-area-inset-left)); display: flex; align-items: center; gap: 14px; }
+.logo { height: 28px; display: block; }
+.tag { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--teal-d); background: #e3f1f2; padding: 4px 10px; border-radius: 999px; }
+.me { margin-left: auto; font-size: 14px; color: var(--ink-2); display: flex; gap: 10px; align-items: center; }
+.layout { max-width: 1320px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-left)) 60px; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 22px; align-items: start; }
+.side { position: sticky; top: 16px; display: grid; gap: 10px; }
+.side h3, .label { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.clist { display: grid; gap: 4px; }
+.cbtn { border: 1px solid transparent; background: none; border-radius: 10px; padding: 8px 10px; text-align: left; display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.cbtn:hover { background: #fff; border-color: var(--line); }
+.cbtn[aria-pressed="true"] { background: #fff; border-color: var(--teal-d); box-shadow: inset 0 0 0 1px var(--teal-d); }
+.pill { font-size: 12px; font-weight: 800; background: var(--orange); color: #fff; border-radius: 999px; padding: 1px 8px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); display: grid; gap: 14px; }
+.stack { display: grid; gap: 16px; }
+h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; line-height: 1.2; }
+h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grow { flex: 1; min-width: 180px; }
+.field { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: #fff; font-size: 15px; }
+.field:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px rgba(71,154,164,.18); }
+textarea.field { min-height: 70px; resize: vertical; line-height: 1.45; }
+.btn { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 13px; font-weight: 700; font-size: 14px; }
+.btn:hover:not(:disabled) { border-color: var(--ink-3); }
+.btn.primary { background: linear-gradient(135deg, #63a9ad 0%, #3f8a91 35%, #2c6a72 100%); color: #fff; border-color: #2c6a72; }
+.btn.danger { color: var(--err); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.small { padding: 4px 9px; font-size: 13px; }
+.link { border: 0; background: none; padding: 0; color: var(--teal-d); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: #f1f4f3; padding: 6px 9px; border-radius: 8px; word-break: break-all; }
+.muted { color: var(--ink-3); font-size: 13.5px; }
+.status { font-size: 14px; font-weight: 600; min-height: 1.3em; }
+.status.ok { color: var(--ok); } .status.err { color: var(--err); }
+.rounds { display: grid; gap: 8px; }
+.rcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.rcard .t { font-weight: 700; flex: 1; min-width: 200px; }
+.hiddenTag { font-size: 12px; font-weight: 800; color: var(--ink-3); background: #eef2f2; border-radius: 999px; padding: 2px 8px; }
+.drop { border: 2px dashed #b9c7c6; border-radius: 16px; padding: 26px; text-align: center; background: #fbfdfc; color: var(--ink-2); display: grid; gap: 8px; justify-items: center; }
+.drop.over { border-color: var(--teal); background: #eaf5f5; }
+.item { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; }
+.media { display: grid; gap: 8px; align-content: start; }
+.ver { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: grid; gap: 6px; background: #fafcfb; }
+.ver img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 6px; background: #eef2f1; display: block; }
+.ver .vrow { display: flex; gap: 6px; align-items: center; }
+.ver .vrow input { padding: 5px 8px; font-size: 13px; }
+.fields { display: grid; gap: 10px; align-content: start; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choice { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; background: #fafcfb; }
+.opts { display: grid; gap: 6px; }
+.optrow { display: grid; grid-template-columns: 70px 1fr auto; gap: 8px; align-items: start; }
+.optrow b { padding-top: 8px; font-size: 13px; }
+.fb { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+.fb.new { border-color: var(--orange); box-shadow: inset 3px 0 0 var(--orange); }
+.fb p { margin: 0; white-space: pre-wrap; color: var(--ink-2); }
+.badge { display: inline-block; font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #eef2f2; color: var(--ink-2); }
+.badge.ok { background: var(--ok-soft); color: var(--ok); } .badge.chg { background: var(--chg-soft); color: var(--chg); }
+.tabs { display: flex; gap: 6px; }
+.tabs button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 14px; }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.gate { max-width: 460px; margin: 10vh auto; }
+.busy { position: fixed; inset: 0; background: rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center; z-index: 80; font-weight: 700; }
+.busy[hidden] { display: none; }
+.busy div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 22px; box-shadow: var(--shadow); max-width: 90vw; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  .side { position: static; }
+  .item { grid-template-columns: 1fr; }
+  .two { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <img class="logo" src="assets/m7alpha-logo.png" alt="M7Alpha">
+  <span class="tag">Review editor</span>
+  <div class="me" id="me"></div>
+</div></header>
+<main id="app"></main>
+<div class="busy" id="busy" hidden><div id="busytext">Working…</div></div>
+
+<script>
+"use strict";
+const CONFIG = { url: "https://johtcnbucfrolcmejmzm.supabase.co", key: "sb_publishable_WHgAfZzDbPralzbgEdVjXg_5p5CKTFU", bucket: "review-media" };
+const REVIEW_PAGE = new URL("./", location.href).href;          // the client page sits next to this one
+const MAX_EDGE = 2400, KEEP_BYTES = 4 * 1024 * 1024, MAX_FILE = 15 * 1024 * 1024;
+const sb = supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, detectSessionInUrl: true, flowType: "implicit" } });
+
+// ---------- helpers ----------
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "value") el.value = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) { if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  return el;
+}
+const app = $("#app");
+const mediaUrl = (p) => `${CONFIG.url}/storage/v1/object/public/${CONFIG.bucket}/${p.split("/").map(encodeURIComponent).join("/")}`;
+const slugify = (t) => (t.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)) || "client";
+function randomCode(n) { const a = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = crypto.getRandomValues(new Uint8Array(n)); return [...b].map((x) => a[x % a.length]).join(""); }
+const fmtDay = (iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const fmtDate = (iso) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+function busy(text) { $("#busytext").textContent = text; $("#busy").hidden = !text; }
+async function q(promise) { const { data, error } = await promise; if (error) throw new Error(error.message); return data; }
+function fail(e) { busy(null); alert("That didn't work: " + (e.message || e)); console.error(e); }
+const DEC = { approve: ["Approved", "ok"], change: ["Changes asked", "chg"], comment: ["Comment", ""], choose: ["Picked", "ok"] };
+
+// ---------- state ----------
+const S = { user: null, clients: [], clientId: null, roundId: null, tab: "pieces", unseen: {} };
+
+// ---------- sign in ----------
+async function start() {
+  const { data } = await sb.auth.getSession();
+  S.user = data.session?.user || null;
+  if (!S.user) return renderSignIn();
+  const ok = await sb.rpc("is_editor");
+  if (ok.error || ok.data !== true) return renderNotEditor();
+  renderMe();
+  await loadClients();
+  route();
+}
+sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" && !S.user) start(); if (ev === "SIGNED_OUT") { S.user = null; renderSignIn(); } });
+
+function renderSignIn(sentTo) {
+  $("#me").replaceChildren();
+  const email = h("input", { class: "field", type: "email", autocomplete: "email", placeholder: "you@m7alpha.com", "aria-label": "Email" });
+  const status = h("div", { class: "status" });
+  const send = async () => {
+    const addr = email.value.trim(); if (!addr) return email.focus();
+    status.className = "status"; status.textContent = "Sending…";
+    const { error } = await sb.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) { status.className = "status err"; status.textContent = "Couldn't send the link: " + error.message; return; }
+    renderSignIn(addr);
+  };
+  email.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+  app.replaceChildren(h("div", { class: "gate" }, h("div", { class: "panel" },
+    h("h1", { text: "Sign in to the editor" }),
+    sentTo ? h("p", { text: `We've emailed a sign-in link to ${sentTo}. Open it on this device. It may take a minute, and can land in spam (it comes from Supabase).` })
+           : h("p", { class: "muted", text: "We'll email you a sign-in link. No password needed. Only M7Alpha editors can make changes." }),
+    sentTo ? h("button", { class: "link", text: "Use a different email", onclick: () => renderSignIn() }) : [email, h("div", { class: "row" }, h("button", { class: "btn primary", text: "Email me a sign-in link", onclick: send })), status])));
+  if (!sentTo) email.focus();
+}
+function renderNotEditor() {
+  app.replaceChildren(h("div", { class: "gate" }, h("div", { class: "panel" },
+    h("h1", { text: "This email isn't an editor" }),
+    h("p", { text: `You're signed in as ${S.user?.email}, but that address isn't on the M7Alpha editors list. Ask Lee to add it.` }),
+    h("div", { class: "row" }, h("button", { class: "btn", text: "Sign out", onclick: () => sb.auth.signOut() })))));
+}
+function renderMe() {
+  $("#me").replaceChildren(h("span", { text: S.user.email }), h("button", { class: "btn small", text: "Sign out", onclick: () => sb.auth.signOut() }));
+}
+
+// ---------- data ----------
+async function loadClients() {
+  S.clients = await q(sb.from("clients").select("*").order("name"));
+  const unseen = await q(sb.from("feedback").select("client_id").is("seen_at", null));
+  S.unseen = {}; unseen.forEach((f) => { S.unseen[f.client_id] = (S.unseen[f.client_id] || 0) + 1; });
+}
+const client = () => S.clients.find((c) => c.id === S.clientId);
+const clientLink = (c) => `${REVIEW_PAGE}?c=${c.link_code}`;
+
+// ---------- routing (#client/<id>/round/<id>) ----------
+function go(clientId, roundId) { S.clientId = clientId || null; S.roundId = roundId || null; location.hash = clientId ? `client/${clientId}` + (roundId ? `/round/${roundId}` : "") : ""; }
+window.addEventListener("hashchange", route);
+function route() {
+  const m = location.hash.match(/client\/([\w-]+)(?:\/round\/([\w-]+))?/);
+  S.clientId = m?.[1] || null; S.roundId = m?.[2] || null;
+  render();
+}
+async function render() {
+  try {
+    const side = renderSide();
+    let main;
+    if (S.roundId && client()) main = await renderRound();
+    else if (client()) main = await renderClient();
+    else main = renderWelcome();
+    app.replaceChildren(h("div", { class: "layout" }, side, main));
+  } catch (e) { fail(e); }
+}
+
+function renderSide() {
+  const name = h("input", { class: "field", placeholder: "New client name", "aria-label": "New client name" });
+  const add = async () => {
+    const n = name.value.trim(); if (!n) return name.focus();
+    let slug = slugify(n); if (S.clients.some((c) => c.slug === slug)) slug += "-" + randomCode(3).toLowerCase();
+    try {
+      busy("Adding client…");
+      const [c] = await q(sb.from("clients").insert({ name: n, slug, link_code: `${slug}-${randomCode(12)}`, media_key: randomCode(16) }).select());
+      await loadClients(); busy(null); go(c.id);
+    } catch (e) { fail(e); }
+  };
+  name.addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
+  return h("aside", { class: "side" },
+    h("h3", { text: "Clients" }),
+    h("div", { class: "clist" }, S.clients.map((c) => h("button", { class: "cbtn", "aria-pressed": String(c.id === S.clientId), onclick: () => go(c.id) },
+      h("span", { text: c.name }), S.unseen[c.id] ? h("span", { class: "pill", title: "New feedback", text: S.unseen[c.id] }) : null))),
+    h("div", { class: "row" }, name, h("button", { class: "btn", text: "Add client", onclick: add })));
+}
+function renderWelcome() {
+  return h("section", { class: "stack" }, h("div", { class: "panel" },
+    h("h1", { text: "Pick a client" }),
+    h("p", { class: "muted", text: "Each client has one permanent review link. Add a round to put new work at that link. An orange number means new feedback." })));
+}
+
+// ---------- client ----------
+async function renderClient() {
+  const c = client();
+  const rounds = await q(sb.from("rounds").select("*").eq("client_id", c.id).order("created_at", { ascending: false }));
+  const items = rounds.length ? await q(sb.from("items").select("id,round_id").in("round_id", rounds.map((r) => r.id))) : [];
+  const fb = rounds.length ? await q(sb.from("feedback").select("round_id,seen_at").eq("client_id", c.id)) : [];
+  const link = clientLink(c);
+  const linkStatus = h("span", { class: "status" });
+  const pass = h("input", { class: "field", type: "text", placeholder: c.passcode_hash ? "New passcode" : "Passcode (optional)", autocomplete: "off", style: "max-width:220px" });
+  const title = h("input", { class: "field grow", placeholder: "Round title, e.g. November posts" });
+  const note = h("textarea", { class: "field", placeholder: "Note for the client about this round (optional)" });
+  const addRound = async () => {
+    if (!title.value.trim()) return title.focus();
+    try { busy("Adding round…"); const [r] = await q(sb.from("rounds").insert({ client_id: c.id, title: title.value.trim(), note: note.value.trim() || null }).select()); busy(null); go(c.id, r.id); } catch (e) { fail(e); }
+  };
+  return h("section", { class: "stack" },
+    h("div", { class: "panel" },
+      h("h1", { text: c.name }),
+      h("div", { class: "label", text: "Permanent review link (send only with Lee's OK)" }),
+      h("div", { class: "mono", text: link }),
+      h("div", { class: "row" },
+        h("button", { class: "btn", text: "Copy link", onclick: async () => { try { await navigator.clipboard.writeText(link); linkStatus.className = "status ok"; linkStatus.textContent = "Copied"; } catch { linkStatus.textContent = "Select the link above and copy it"; } } }),
+        h("a", { class: "btn", href: link, target: "_blank", rel: "noopener", text: "Open the client's view" }), linkStatus),
+      h("div", { class: "label", text: c.passcode_hash ? "Passcode: on" : "Passcode: off" }),
+      h("div", { class: "row" }, pass,
+        h("button", { class: "btn", text: c.passcode_hash ? "Change passcode" : "Set passcode", onclick: async () => { if (!pass.value.trim()) return pass.focus(); try { await q(sb.rpc("set_client_passcode", { p_client_id: c.id, p_passcode: pass.value.trim() })); await loadClients(); render(); } catch (e) { fail(e); } } }),
+        c.passcode_hash ? h("button", { class: "btn", text: "Remove passcode", onclick: async () => { try { await q(sb.rpc("set_client_passcode", { p_client_id: c.id, p_passcode: null })); await loadClients(); render(); } catch (e) { fail(e); } } }) : null)),
+    h("div", { class: "panel" },
+      h("h2", { text: "New round" }),
+      h("div", { class: "row" }, title, h("button", { class: "btn primary", text: "Add round", onclick: addRound })), note),
+    h("div", { class: "panel" },
+      h("h2", { text: "Rounds, newest first" }),
+      rounds.length ? h("div", { class: "rounds" }, rounds.map((r) => {
+        const n = items.filter((i) => i.round_id === r.id).length, f = fb.filter((x) => x.round_id === r.id), nu = f.filter((x) => !x.seen_at).length;
+        return h("div", { class: "rcard" },
+          h("span", { class: "t" }, r.title, " ", r.hidden ? h("span", { class: "hiddenTag", text: "Hidden from client" }) : null),
+          h("span", { class: "muted", text: `${fmtDay(r.created_at)} · ${n} pieces · ${f.length} notes` }), nu ? h("span", { class: "pill", text: nu + " new" }) : null,
+          h("button", { class: "btn small primary", text: "Open", onclick: () => go(c.id, r.id) }),
+          h("button", { class: "btn small", text: r.hidden ? "Show to client" : "Hide from client", onclick: async () => { try { await q(sb.from("rounds").update({ hidden: !r.hidden }).eq("id", r.id)); render(); } catch (e) { fail(e); } } }));
+      })) : h("p", { class: "muted", text: "No rounds yet." })));
+}
+
+// ---------- round ----------
+async function renderRound() {
+  const c = client();
+  const [r] = await q(sb.from("rounds").select("*").eq("id", S.roundId));
+  if (!r) { go(c.id); return h("div"); }
+  const items = await q(sb.from("items").select("*").eq("round_id", r.id).order("position").order("created_at"));
+  const fb = await q(sb.from("feedback").select("*").eq("round_id", r.id).order("created_at", { ascending: false }));
+  const title = h("input", { class: "field grow", value: r.title, "aria-label": "Round title" });
+  const note = h("textarea", { class: "field", value: r.note || "", placeholder: "Note for the client about this round (optional)", "aria-label": "Round note" });
+  const st = h("span", { class: "status" });
+  const unseen = fb.filter((f) => !f.seen_at).length;
+  const head = h("div", { class: "panel" },
+    h("div", { class: "row" }, h("button", { class: "link", text: "← " + c.name, onclick: () => go(c.id) })),
+    h("div", { class: "row" }, title, h("button", { class: "btn", text: "Save", onclick: async () => { try { await q(sb.from("rounds").update({ title: title.value.trim() || r.title, note: note.value.trim() || null }).eq("id", r.id)); st.className = "status ok"; st.textContent = "Saved"; } catch (e) { fail(e); } } }), st),
+    note,
+    h("div", { class: "row" },
+      h("a", { class: "btn", href: clientLink(c), target: "_blank", rel: "noopener", text: "Open the client's view" }),
+      h("button", { class: "btn", text: r.hidden ? "Show to client" : "Hide from client", onclick: async () => { try { await q(sb.from("rounds").update({ hidden: !r.hidden }).eq("id", r.id)); render(); } catch (e) { fail(e); } } }),
+      h("button", { class: "btn danger", text: "Delete round", onclick: () => deleteRound(r, items) })),
+    h("div", { class: "tabs" },
+      h("button", { "aria-pressed": String(S.tab === "pieces"), text: `Pieces (${items.length})`, onclick: () => { S.tab = "pieces"; render(); } }),
+      h("button", { "aria-pressed": String(S.tab === "feedback"), text: `Feedback (${fb.length}${unseen ? `, ${unseen} new` : ""})`, onclick: () => { S.tab = "feedback"; render(); } })));
+  if (S.tab === "feedback") return h("section", { class: "stack" }, head, renderFeedback(fb, items));
+
+  const drop = h("label", { class: "drop" },
+    h("b", { text: "Drop pictures or reels here, or click to choose" }),
+    h("span", { class: "muted", text: "Each file becomes a piece. “Name (Feed).png” and “Name (Story).png” become one piece with two versions. Reels up to 15 MB." }),
+    h("input", { type: "file", multiple: true, accept: "image/*,video/mp4", style: "display:none", onchange: (e) => addFiles(c, r, items, [...e.target.files]) }));
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(c, r, items, [...e.dataTransfer.files]); });
+  return h("section", { class: "stack" }, head, drop, ...items.map((it, i) => itemEditor(c, r, it, i, items, fb)));
+}
+
+function renderFeedback(fb, items) {
+  const byId = Object.fromEntries(items.map((i) => [i.id, i]));
+  const unseen = fb.filter((f) => !f.seen_at);
+  return h("div", { class: "panel" },
+    h("div", { class: "row" }, h("h2", { class: "grow", text: "Feedback, newest first" }),
+      unseen.length ? h("button", { class: "btn", text: `Mark ${unseen.length} as read`, onclick: async () => { try { await q(sb.from("feedback").update({ seen_at: new Date().toISOString() }).in("id", unseen.map((f) => f.id))); await loadClients(); render(); } catch (e) { fail(e); } } }) : null),
+    fb.length ? fb.map((f) => {
+      const it = byId[f.item_id], pins = f.marks?.pins || [], strokes = f.marks?.strokes?.length || 0;
+      const pick = f.decision === "choose" ? it?.choice?.options?.find((o) => o.id === f.choice) : null;
+      return h("div", { class: "fb" + (f.seen_at ? "" : " new") },
+        h("div", { class: "row" }, h("b", { text: it?.title || "(deleted piece)" }), h("span", { class: "badge " + DEC[f.decision][1], text: pick ? `Picked “${pick.label}”` : DEC[f.decision][0] }),
+          h("span", { class: "muted", text: `${f.reviewer} · ${fmtDate(f.created_at)}${it && f.item_version !== it.version ? ` · on version ${f.item_version}` : ""}` })),
+        pick?.text ? h("p", { text: pick.text }) : null,
+        f.comment ? h("p", { text: f.comment }) : null,
+        pins.length ? h("ol", { style: "margin:0;padding-left:20px" }, pins.map((p) => h("li", { text: p.text || "(no words)" }))) : null,
+        strokes || pins.length ? h("span", { class: "muted", text: `${strokes} drawn mark(s), ${pins.length} pin(s). See them on the client's view under “Notes so far”.` }) : null);
+    }) : h("p", { class: "muted", text: "No feedback yet." }));
+}
+
+// ---------- one piece ----------
+function itemEditor(c, r, it, idx, items, fb) {
+  const media = it.media.map((m) => ({ ...m }));       // working copy
+  const added = [];                                       // new files: {label, file}
+  const title = h("input", { class: "field", value: it.title, "aria-label": "Title" });
+  const group = h("input", { class: "field", value: it.group_name || "", placeholder: "Group (filter button), e.g. Posts", "aria-label": "Group" });
+  const caption = h("textarea", { class: "field", value: it.caption || "", placeholder: "Caption the client is approving (optional)", "aria-label": "Caption" });
+  const note = h("textarea", { class: "field", value: it.note || "", placeholder: "Note from M7Alpha to the client on this piece (optional)", "aria-label": "Note" });
+  const ch = it.choice || null;
+  const kind = h("select", { class: "field", "aria-label": "Pick one" },
+    h("option", { value: "", text: "No: just approve or comment" }),
+    h("option", { value: "versions", text: "Yes: pick one of the versions" }),
+    h("option", { value: "texts", text: "Yes: pick one of these wordings" }));
+  kind.value = ch?.kind || "";
+  const question = h("input", { class: "field", value: ch?.question || "", placeholder: "Question, e.g. Which look do you prefer?", "aria-label": "Question" });
+  const texts = (ch?.kind === "texts" ? ch.options.map((o) => o.text) : ["", ""]);
+  const optsBox = h("div", { class: "opts" });
+  const drawTexts = () => {
+    optsBox.replaceChildren(...texts.map((t, i) => {
+      const ta = h("textarea", { class: "field", value: t, placeholder: "Wording " + "ABCDEFGHIJ"[i], style: "min-height:52px" });
+      ta.addEventListener("input", () => { texts[i] = ta.value; });
+      return h("div", { class: "optrow" }, h("b", { text: "Option " + "ABCDEFGHIJ"[i] }), ta,
+        texts.length > 2 ? h("button", { class: "btn small", text: "Remove", onclick: () => { texts.splice(i, 1); drawTexts(); } }) : h("span"));
+    }), texts.length < 10 ? h("div", {}, h("button", { class: "btn small", text: "Add another wording", onclick: () => { texts.push(""); drawTexts(); } })) : null);
+  };
+  const choiceBox = h("div", { class: "choice" });
+  const drawChoice = () => {
+    choiceBox.replaceChildren(h("div", { class: "label", text: "Ask the client to pick one?" }), kind);
+    if (kind.value) choiceBox.append(question);
+    if (kind.value === "versions") choiceBox.append(h("span", { class: "muted", text: media.length + added.length > 1 ? "They'll pick between the versions on the left." : "Add at least two versions on the left first." }));
+    if (kind.value === "texts") { drawTexts(); choiceBox.append(optsBox, h("span", { class: "muted", text: "The wordings show under the artwork. They can also write a note, for example to ask for a mix." })); }
+  };
+  kind.addEventListener("change", drawChoice); drawChoice();
+
+  const mediaBox = h("div", { class: "media" });
+  const drawMedia = () => {
+    mediaBox.replaceChildren(
+      ...media.map((m, i) => {
+        const lab = h("input", { class: "field", value: m.label, "aria-label": "Version name" });
+        lab.addEventListener("input", () => { m.label = lab.value; });
+        return h("div", { class: "ver" }, h("img", { src: mediaUrl(m.type === "video" ? (m.poster || m.path) : m.path), alt: "", loading: "lazy" }),
+          h("div", { class: "vrow" }, lab, h("button", { class: "btn small danger", title: "Remove this version", text: "✕", onclick: () => { media.splice(i, 1); drawMedia(); drawChoice(); } })));
+      }),
+      ...added.map((a, i) => {
+        const lab = h("input", { class: "field", value: a.label, "aria-label": "Version name" });
+        lab.addEventListener("input", () => { a.label = lab.value; });
+        return h("div", { class: "ver" }, h("div", { class: "muted", text: "New: " + a.file.name }),
+          h("div", { class: "vrow" }, lab, h("button", { class: "btn small danger", text: "✕", onclick: () => { added.splice(i, 1); drawMedia(); drawChoice(); } })));
+      }),
+      h("label", { class: "btn small", style: "text-align:center" }, "Add a version",
+        h("input", { type: "file", accept: "image/*,video/mp4", multiple: true, style: "display:none", onchange: (e) => { [...e.target.files].forEach((f) => added.push({ label: labelFromName(f.name) || "Version " + (media.length + added.length + 1), file: f })); drawMedia(); drawChoice(); } })));
+  };
+  drawMedia();
+
+  const onThis = fb.filter((f) => f.item_id === it.id);
+  const last = onThis.filter((f) => f.item_version === it.version && f.decision !== "comment")[0];
+  const status = h("span", { class: "status" });
+  const save = async () => {
+    try {
+      busy("Saving " + (title.value.trim() || it.title) + "…");
+      let choice = null;
+      if (kind.value === "texts") {
+        const t = texts.map((x) => x.trim()).filter(Boolean);
+        if (t.length < 2) throw new Error("Give at least two wordings.");
+        choice = { kind: "texts", question: question.value.trim() || "Which words do you prefer?", options: t.map((x, i) => ({ id: "t" + (i + 1), label: "Option " + "ABCDEFGHIJ"[i], text: x })) };
+      }
+      const captionNew = caption.value.trim() || null;
+      const mediaChanged = added.length > 0 || media.length !== it.media.length;
+      const textsChanged = JSON.stringify(choice?.options || null) !== JSON.stringify(it.choice?.kind === "texts" ? it.choice.options : null);
+      const contentChanged = mediaChanged || captionNew !== (it.caption || null) || textsChanged;
+      const hasFeedback = onThis.some((f) => f.item_version === it.version);
+      const version = contentChanged && hasFeedback ? it.version + 1 : it.version;
+      const uploaded = await uploadMedia(c, r.id, it.id, version, added, media.map((m) => m.id));
+      const finalMedia = [...media, ...uploaded];
+      if (!finalMedia.length) throw new Error("A piece needs at least one picture or reel.");
+      if (kind.value === "versions") {
+        if (finalMedia.length < 2) throw new Error("Pick-one between versions needs at least two versions.");
+        choice = { kind: "versions", question: question.value.trim() || "Which one do you prefer?", options: finalMedia.map((m) => ({ id: m.id, label: m.label })) };
+      }
+      await q(sb.from("items").update({ title: title.value.trim() || it.title, group_name: group.value.trim() || null, caption: captionNew, note: note.value.trim() || null, media: finalMedia, choice, version }).eq("id", it.id));
+      busy(null);
+      S.flash = { id: it.id, text: version > it.version ? `Saved as version ${version}. The client sees it as waiting again.` : "Saved." };
+      render();
+    } catch (e) { fail(e); }
+  };
+  if (S.flash?.id === it.id) { status.className = "status ok"; status.textContent = S.flash.text; S.flash = null; }
+  return h("div", { class: "item panel" },
+    mediaBox,
+    h("div", { class: "fields" },
+      h("div", { class: "row" }, h("span", { class: "label grow", text: `Piece ${idx + 1} · version ${it.version}` }),
+        last ? h("span", { class: "badge " + DEC[last.decision][1], text: `${DEC[last.decision][0]} by ${last.reviewer}` }) : h("span", { class: "badge", text: "Waiting" }),
+        onThis.length ? h("span", { class: "muted", text: onThis.length + " notes" }) : null),
+      h("div", { class: "two" }, h("div", {}, h("div", { class: "label", text: "Title" }), title), h("div", {}, h("div", { class: "label", text: "Group" }), group)),
+      h("div", { class: "label", text: "Caption" }), caption,
+      h("div", { class: "label", text: "Note from M7Alpha" }), note,
+      choiceBox,
+      h("div", { class: "row" },
+        h("button", { class: "btn primary", text: "Save this piece", onclick: save }), status,
+        h("span", { class: "grow" }),
+        h("button", { class: "btn small", text: "↑", title: "Move up", disabled: idx === 0, onclick: () => move(items, idx, -1) }),
+        h("button", { class: "btn small", text: "↓", title: "Move down", disabled: idx === items.length - 1, onclick: () => move(items, idx, 1) }),
+        h("button", { class: "btn small danger", text: "Delete piece", onclick: () => deleteItem(it, onThis.length) }))));
+}
+function labelFromName(name) { const m = name.replace(/\.[^.]+$/, "").match(/\(([^()]+)\)\s*$/); return m ? m[1].trim() : ""; }
+function baseFromName(name) { return name.replace(/\.[^.]+$/, "").replace(/\s*\([^()]+\)\s*$/, "").replace(/_+/g, " ").trim(); }
+
+async function move(items, idx, d) {
+  try {
+    const order = items.map((i) => i.id), [x] = order.splice(idx, 1); order.splice(idx + d, 0, x);
+    busy("Reordering…");
+    for (let i = 0; i < order.length; i++) await q(sb.from("items").update({ position: i }).eq("id", order[i]));
+    busy(null); render();
+  } catch (e) { fail(e); }
+}
+async function deleteItem(it, notes) {
+  if (!confirm(`Delete "${it.title}"${notes ? ` and its ${notes} notes` : ""}? This can't be undone.`)) return;
+  try {
+    busy("Deleting…");
+    await removeFiles(it.media);
+    await q(sb.from("items").delete().eq("id", it.id));
+    busy(null); render();
+  } catch (e) { fail(e); }
+}
+async function deleteRound(r, items) {
+  if (!confirm(`Delete the round "${r.title}", its ${items.length} pieces and all their feedback? This can't be undone. (Hiding it keeps everything.)`)) return;
+  try {
+    busy("Deleting round…");
+    await removeFiles(items.flatMap((i) => i.media));
+    await q(sb.from("rounds").delete().eq("id", r.id));
+    busy(null); go(S.clientId);
+  } catch (e) { fail(e); }
+}
+async function removeFiles(media) {
+  const paths = media.flatMap((m) => [m.path, m.poster].filter(Boolean));
+  if (paths.length) await q(sb.storage.from(CONFIG.bucket).remove(paths));
+}
+
+// ---------- adding files ----------
+async function addFiles(c, r, items, files) {
+  files = files.filter((f) => /^(image|video)\//.test(f.type));
+  if (!files.length) return;
+  const groups = new Map();
+  for (const f of files.sort((a, b) => a.name.localeCompare(b.name))) {
+    const base = baseFromName(f.name) || "Untitled";
+    if (!groups.has(base)) groups.set(base, []);
+    groups.get(base).push({ label: labelFromName(f.name) || "Artwork", file: f });
+  }
+  let pos = items.length, done = 0;
+  try {
+    for (const [base, list] of groups) {
+      busy(`Uploading ${++done} of ${groups.size}: ${base}…`);
+      const [row] = await q(sb.from("items").insert({ round_id: r.id, position: pos++, title: base }).select());
+      try {
+        const media = await uploadMedia(c, r.id, row.id, 1, list, []);
+        await q(sb.from("items").update({ media }).eq("id", row.id));
+      } catch (e) { await sb.from("items").delete().eq("id", row.id); throw e; }   // no half-made pieces
+    }
+    await q(sb.from("rounds").update({ title: r.title }).eq("id", r.id));          // marks the round as changed, so open client pages say "new work"
+    busy(null); render();
+  } catch (e) { fail(e); render(); }
+}
+
+async function uploadMedia(c, roundId, itemId, version, list, takenIds) {
+  const out = [], seen = new Set(takenIds);
+  for (const a of list) {
+    let vid = slugify(a.label) || "artwork"; while (seen.has(vid)) vid += "-2"; seen.add(vid);
+    const p = await prepare(a.file);
+    const path = `${c.media_key}/${roundId}/${itemId}/v${version}-${vid}${p.ext}`;
+    await putFile(path, p.blob, p.type);
+    const m = { id: vid, label: a.label, path, width: p.w, height: p.h, type: p.kind };
+    if (p.poster) { m.poster = path.replace(/\.[^.]+$/, "") + "-poster.jpg"; await putFile(m.poster, p.poster, "image/jpeg"); }
+    out.push(m);
+  }
+  return out;
+}
+async function putFile(path, blob, type) {
+  await q(sb.storage.from(CONFIG.bucket).upload(path, blob, { upsert: true, contentType: type, cacheControl: "31536000" }));
+  const back = await fetch(mediaUrl(path), { cache: "no-store" });                 // read it back: the public copy must match
+  const got = back.ok ? (await back.blob()).size : -1;
+  if (got !== blob.size) throw new Error(`Upload check failed for ${path} (${got} of ${blob.size} bytes)`);
+}
+async function prepare(file) {
+  if (file.type.startsWith("video/")) {
+    if (file.size > MAX_FILE) throw new Error(`${file.name} is over 15 MB. Make a smaller copy first.`);
+    const url = URL.createObjectURL(file), v = document.createElement("video");
+    v.muted = true; v.preload = "auto"; v.src = url;
+    await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = () => no(new Error("Couldn't read " + file.name)); });
+    v.currentTime = Math.min(1, (v.duration || 2) / 2);
+    await new Promise((ok) => { v.onseeked = ok; });
+    const cv = document.createElement("canvas"); cv.width = v.videoWidth; cv.height = v.videoHeight;
+    cv.getContext("2d").drawImage(v, 0, 0);
+    const poster = await new Promise((ok) => cv.toBlob(ok, "image/jpeg", 0.85));
+    URL.revokeObjectURL(url);
+    return { blob: file, type: "video/mp4", ext: ".mp4", w: v.videoWidth, h: v.videoHeight, kind: "video", poster };
+  }
+  const bmp = await createImageBitmap(file);
+  const w = bmp.width, hgt = bmp.height, okType = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+  if (okType && Math.max(w, hgt) <= MAX_EDGE && file.size <= KEEP_BYTES) {
+    const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" }[file.type];
+    return { blob: file, type: file.type, ext, w, h: hgt, kind: "image" };
+  }
+  const s = Math.min(1, MAX_EDGE / Math.max(w, hgt)), cv = document.createElement("canvas");
+  cv.width = Math.round(w * s); cv.height = Math.round(hgt * s);
+  cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+  let blob = file.type === "image/png" ? await new Promise((ok) => cv.toBlob(ok, "image/png")) : null;
+  if (!blob || blob.size > KEEP_BYTES) blob = await new Promise((ok) => cv.toBlob(ok, "image/jpeg", 0.9));
+  return { blob, type: blob.type, ext: blob.type === "image/png" ? ".png" : ".jpg", w: cv.width, h: cv.height, kind: "image" };
+}
+
+start().catch(fail);
+</script>
+</body>
+</html>
