@@ -323,7 +323,12 @@ function renderFeedback(fb, items) {
       const it = byId[f.item_id], pins = f.marks?.pins || [], strokes = f.marks?.strokes?.length || 0;
       // one question: choice is the option id; two questions: choice is {"design": id, "caption": id}
       const qs = Array.isArray(it?.choice) ? it.choice : it?.choice ? [{ ...it.choice, key: "_" }] : [];
-      let raw = {}; if (f.decision === "choose") { try { raw = Array.isArray(it?.choice) ? JSON.parse(f.choice) : { _: f.choice }; } catch { raw = {}; } }
+      let raw = {};
+      if (f.decision === "choose") {
+        if (!Array.isArray(it?.choice)) raw = { _: f.choice };
+        else { try { raw = JSON.parse(f.choice); } catch { const q0 = it.choice.find((x) => x.options?.some((o) => o.id === f.choice)); raw = q0 ? { [q0.key]: f.choice } : {}; } }
+        if (!raw || typeof raw !== "object") raw = {};
+      }
       const picks = qs.filter((x) => raw[x.key]).map((x) => x.options.find((o) => o.id === raw[x.key])).filter(Boolean);
       return h("div", { class: "fb" + (f.seen_at ? "" : " new") },
         h("div", { class: "row" }, h("b", { text: it?.title || "(deleted piece)" }), h("span", { class: "badge " + DEC[f.decision][1], text: picks.length ? `Picked ${picks.map((p) => `“${p.label}”`).join(" and ")}` : DEC[f.decision][0] }),

@@ -79,6 +79,8 @@ h1:has(.hl) { line-height: 1.3; }
 /* buttons: the two used on m7alpha.com */
 .cta { display: inline-flex; align-items: center; gap: .6em; border-radius: 999px; font-weight: 700; line-height: 1;
   white-space: nowrap; padding: .42em .42em .42em 1.2em; border: 0; font-size: 16px; letter-spacing: -.01em; }
+.cta { max-width: 100%; }
+@media (max-width: 520px) { .cta { white-space: normal; text-align: left; line-height: 1.2; } }
 .cta .arr { width: 2em; height: 2em; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; }
 .cta .arr svg { width: .9em; height: .9em; }
 .cta.pill { background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 45%), linear-gradient(135deg, #63a9ad 0%, #3f8a91 35%, #2c6a72 100%);
@@ -150,7 +152,7 @@ footer .wrap { display: grid; gap: 6px; }
 .iconbtn { width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .iconbtn:hover { background: rgba(255,255,255,.22); }
 .iconbtn svg { width: 20px; height: 20px; }
-.s-body { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0; }
+.s-body { display: grid; grid-template-columns: minmax(0, 1fr) clamp(440px, 42vw, 680px); min-height: 0; }
 .stage { position: relative; display: flex; align-items: center; justify-content: center; padding: 8px 64px 18px; min-height: 0; overflow: hidden; touch-action: pan-y; }
 .frame { position: relative; display: inline-block; line-height: 0; max-width: 100%; }
 .frame img, .frame video { display: block; max-width: 100%; max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); width: auto; height: auto; border-radius: 6px; user-select: none; -webkit-user-drag: none; }
@@ -161,7 +163,18 @@ footer .wrap { display: grid; gap: 6px; }
 .navbtn.prev { left: 12px; } .navbtn.next { right: 12px; }
 .navbtn:disabled { opacity: .25; cursor: default; }
 .panel { background: #fff; color: var(--ink); overflow-y: auto; padding: 20px 20px 40px; display: grid; gap: 16px; align-content: start; border-radius: 18px 0 0 0; }
-.panel { grid-template-columns: minmax(0, 1fr); }
+.panel { grid-template-columns: minmax(0, 1fr); padding: 26px 30px 0; gap: 18px; font-size: 15.5px; }
+.panel h3.sec { margin: 10px 0 -4px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--teal-d); }
+.panel .label { font-size: 12.5px; color: var(--ink-2); }
+.panel .qlabel { font-size: 17px; font-weight: 800; letter-spacing: -.01em; text-transform: none; color: var(--ink); margin: 4px 0 -6px; }
+.options.thumbs { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.options.thumbs .opt { padding: 8px; grid-template-columns: 1fr auto; }
+.options.thumbs .opt img { grid-column: 1 / -1; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 9px; background: #eef2f1; display: block; }
+.options.thumbs .opt b { font-size: 14px; align-self: center; }
+.dec { grid-auto-flow: column; justify-content: center; align-items: center; gap: 8px; padding: 12px 8px; }
+.send { position: sticky; bottom: 0; z-index: 2; background: #fff; padding: 12px 0 14px; margin: 0 -30px; padding-left: 30px; padding-right: 30px; border-top: 1px solid var(--line); box-shadow: 0 -8px 16px rgba(17,18,20,.05); }
+.send .status:empty { display: none; }
+.panel .history { padding-bottom: 30px; }
 .panel .cta { white-space: normal; text-align: left; line-height: 1.2; max-width: 100%; }
 .panel h2 { margin: 0; font-size: 22px; line-height: 1.25; letter-spacing: -.015em; }
 .panel .cap { white-space: pre-wrap; font-size: 15px; color: var(--ink-2); background: #f6f8f7; border-radius: 12px; padding: 12px 14px; margin: 0; }
@@ -228,6 +241,12 @@ textarea.field { min-height: 96px; resize: vertical; line-height: 1.45; }
   .frame img, .frame video { max-height: 62vh; max-height: 62dvh; }
   .navbtn { display: none; }
   .panel { border-radius: 18px 18px 0 0; overflow: visible; }
+  .panel { padding: 22px 16px 0; min-width: 0; }
+  .send { margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+  .options.thumbs { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .send .actions { flex-wrap: nowrap; gap: 8px; }
+  .send .cta { font-size: 14.5px; padding-left: .9em; }
+  .s-body { overflow-x: hidden; }
   .deco { width: 150px; }
 }
 @media (max-width: 520px) {
@@ -323,7 +342,11 @@ function questionsOf(item) {
 }
 function picksOf(item, raw) {
   if (raw == null) return {};
-  if (Array.isArray(item.choice)) { try { return JSON.parse(raw) || {}; } catch { return {}; } }
+  if (Array.isArray(item.choice)) {
+    try { const o = JSON.parse(raw); if (o && typeof o === "object") return o; } catch {}
+    const q = item.choice.find((x) => x.options?.some((o) => o.id === raw));    // a pick saved before the piece had two questions
+    return q ? { [q.key]: raw } : {};
+  }
   return { _: raw };
 }
 function picksText(item, raw) {
@@ -602,10 +625,13 @@ function renderStory() {
   if (it.caption) panel.append(h("div", { class: "label", text: "Caption" }), h("p", { class: "cap", text: it.caption }));
 
   const questions = questionsOf(it), choice = questions.length ? questions : null;
+  panel.append(h("h3", { class: "sec", text: "Your review" }));
   if (choice) {
     for (const q of questions) {
-      panel.append(h("div", { class: "label", text: q.question || (q.kind === "texts" ? "Which words do you prefer?" : "Which design do you prefer?") }),
-        h("div", { class: "options" }, q.options.map((o) => h("button", {
+      const thumbs = q.kind === "versions";
+      const thumbOf = (o) => { const m = it.media.find((x) => x.id === o.id); return m ? mediaUrl(m.type === "video" ? (m.poster || m.path) : m.path) : null; };
+      panel.append(h("div", { class: "label qlabel", text: q.question || (q.kind === "texts" ? "Which words do you prefer?" : "Which design do you prefer?") }),
+        h("div", { class: "options" + (thumbs ? " thumbs" : "") }, q.options.map((o) => h("button", {
           type: "button", class: "opt", "aria-pressed": String(draft.decision === "choose" && draft.picks?.[q.key] === o.id),
           onclick: () => {
             const dr = getDraft(it); dr.picks = dr.decision === "choose" ? { ...(dr.picks || {}) } : {};
@@ -615,12 +641,12 @@ function renderStory() {
             if (q.kind === "versions" && !same && it.media.some((m) => m.id === o.id)) S.variant[it.id] = o.id;
             renderStory();
           },
-        }, h("b", { text: o.label }), h("span", { class: "tick", html: ICON.approve }), o.text ? h("span", { class: "opttext", text: o.text }) : null))));
+        }, thumbs && thumbOf(o) ? h("img", { src: thumbOf(o), alt: "" }) : null, h("b", { text: o.label }), h("span", { class: "tick", html: ICON.approve }), o.text ? h("span", { class: "opttext", text: o.text }) : null))));
     }
     if (questions.length > 1) panel.append(h("p", { class: "hint", text: "Pick one in each list, or just the ones you have a view on." }));
     panel.append(h("div", { class: "label", text: "Or" }));
   } else {
-    panel.append(h("div", { class: "label", text: "What do you think?" }));
+    panel.append(h("div", { class: "label qlabel", text: "What do you think?" }));
   }
   const kinds = Object.entries(DECISION).filter(([k]) => k !== "choose" && !(choice && k === "approve"));
   const decide = h("div", { class: "decide" + (choice ? " two" : "") }, kinds.map(([k, d]) => h("button", {
@@ -670,14 +696,14 @@ function renderStory() {
   const sendBtn = ctaBtn("Send to M7Alpha", "pill", () => send(it, status, sendBtn));
   const nr = nextRound();
   panel.append(h("div", { class: "send" }, h("div", { class: "actions" }, sendBtn,
-    S.story < items.length - 1 ? ctaBtn("Next", "white", () => go(1)) : nr ? ctaBtn("Next round: " + nr.title, "white", () => openRound(nr, true)) : null), status));
+    S.story < items.length - 1 ? ctaBtn("Next", "white", () => go(1)) : nr ? ctaBtn("Next round", "white", () => openRound(nr, true), { title: "Next round: " + nr.title }) : null), status));
   function updateSend() { sendBtn.disabled = S.sending || !canSend(it); }
   updateSend();
 
   // earlier notes on this piece
   const fbs = [...it.feedback].reverse();
   if (fbs.length) {
-    panel.append(h("div", { class: "label", text: "Notes so far" }), h("div", { class: "history" }, fbs.map((f) => {
+    panel.append(h("h3", { class: "sec", text: "Notes so far" }), h("div", { class: "history" }, fbs.map((f) => {
       const m = f.marks || {}, hasMarks = (m.strokes?.length || 0) + (m.pins?.length || 0) > 0;
       const variantLabel = it.media.find((x) => x.id === f.variant_id)?.label;
       return h("div", { class: "fb" },
