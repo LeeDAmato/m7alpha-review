@@ -386,6 +386,13 @@ async function load({ quiet = false } = {}) {
   document.title = `${res.client.name} · M7Alpha Review`;
   renderApp();
   if (S.story >= 0) renderStory();
+  // ?p=<piece id> opens straight on that piece (once per visit)
+  const want = params.get("p");
+  if (want && !S.deepDone) {
+    S.deepDone = true;
+    const r = rounds().find((ro) => ro.items.some((i) => i.id.startsWith(want)));
+    if (r) { S.roundId = r.id; S.group = "all"; renderApp(); openStory(r.items.findIndex((i) => i.id.startsWith(want))); }
+  }
   return true;
 }
 
