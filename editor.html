@@ -321,11 +321,14 @@ function renderFeedback(fb, items) {
       unseen.length ? h("button", { class: "btn", text: `Mark ${unseen.length} as read`, onclick: async () => { try { await q(sb.from("feedback").update({ seen_at: new Date().toISOString() }).in("id", unseen.map((f) => f.id))); await loadClients(); render(); } catch (e) { fail(e); } } }) : null),
     fb.length ? fb.map((f) => {
       const it = byId[f.item_id], pins = f.marks?.pins || [], strokes = f.marks?.strokes?.length || 0;
-      const pick = f.decision === "choose" ? it?.choice?.options?.find((o) => o.id === f.choice) : null;
+      // one question: choice is the option id; two questions: choice is {"design": id, "caption": id}
+      const qs = Array.isArray(it?.choice) ? it.choice : it?.choice ? [{ ...it.choice, key: "_" }] : [];
+      let raw = {}; if (f.decision === "choose") { try { raw = Array.isArray(it?.choice) ? JSON.parse(f.choice) : { _: f.choice }; } catch { raw = {}; } }
+      const picks = qs.filter((x) => raw[x.key]).map((x) => x.options.find((o) => o.id === raw[x.key])).filter(Boolean);
       return h("div", { class: "fb" + (f.seen_at ? "" : " new") },
-        h("div", { class: "row" }, h("b", { text: it?.title || "(deleted piece)" }), h("span", { class: "badge " + DEC[f.decision][1], text: pick ? `Picked “${pick.label}”` : DEC[f.decision][0] }),
+        h("div", { class: "row" }, h("b", { text: it?.title || "(deleted piece)" }), h("span", { class: "badge " + DEC[f.decision][1], text: picks.length ? `Picked ${picks.map((p) => `“${p.label}”`).join(" and ")}` : DEC[f.decision][0] }),
           h("span", { class: "muted", text: `${f.reviewer} · ${fmtDate(f.created_at)}${it && f.item_version !== it.version ? ` · on version ${f.item_version}` : ""}` })),
-        pick?.text ? h("p", { text: pick.text }) : null,
+        picks.filter((p) => p.text).map((p) => h("p", { text: p.text })),
         f.comment ? h("p", { text: f.comment }) : null,
         pins.length ? h("ol", { style: "margin:0;padding-left:20px" }, pins.map((p) => h("li", { text: p.text || "(no words)" }))) : null,
         strokes || pins.length ? h("span", { class: "muted", text: `${strokes} drawn mark(s), ${pins.length} pin(s). See them on the client's view under “Notes so far”.` }) : null);
@@ -340,14 +343,13 @@ function itemEditor(c, r, it, idx, items, fb) {
   const group = h("input", { class: "field", value: it.group_name || "", placeholder: "Group (filter button), e.g. Posts", "aria-label": "Group" });
   const caption = h("textarea", { class: "field", value: it.caption || "", placeholder: "Caption the client is approving (optional)", "aria-label": "Caption" });
   const note = h("textarea", { class: "field", value: it.note || "", placeholder: "Note from M7Alpha to the client on this piece (optional)", "aria-label": "Note" });
-  const ch = it.choice || null;
-  const kind = h("select", { class: "field", "aria-label": "Pick one" },
-    h("option", { value: "", text: "No: just approve or comment" }),
-    h("option", { value: "versions", text: "Yes: pick one of the versions" }),
-    h("option", { value: "texts", text: "Yes: pick one of these wordings" }));
-  kind.value = ch?.kind || "";
-  const question = h("input", { class: "field", value: ch?.question || "", placeholder: "Question, e.g. Which look do you prefer?", "aria-label": "Question" });
-  const texts = (ch?.kind === "texts" ? ch.options.map((o) => o.text) : ["", ""]);
+  // a piece can ask up to two pick-one questions: which design version, and which caption / wording
+  const qs = Array.isArray(it.choice) ? it.choice : it.choice ? [it.choice] : [];
+  const vq = qs.find((x) => x.kind === "versions"), tq = qs.find((x) => x.kind === "texts");
+  const askV = h("input", { type: "checkbox", checked: !!vq }), askT = h("input", { type: "checkbox", checked: !!tq });
+  const vQuestion = h("input", { class: "field", value: vq?.question || "", placeholder: "Question, e.g. Which design do you prefer?", "aria-label": "Design question" });
+  const question = h("input", { class: "field", value: tq?.question || "", placeholder: "Question, e.g. Which caption do you prefer?", "aria-label": "Wording question" });
+  const texts = (tq ? tq.options.map((o) => o.text) : ["", ""]);
   const optsBox = h("div", { class: "opts" });
   const drawTexts = () => {
     optsBox.replaceChildren(...texts.map((t, i) => {
@@ -359,12 +361,13 @@ function itemEditor(c, r, it, idx, items, fb) {
   };
   const choiceBox = h("div", { class: "choice" });
   const drawChoice = () => {
-    choiceBox.replaceChildren(h("div", { class: "label", text: "Ask the client to pick one?" }), kind);
-    if (kind.value) choiceBox.append(question);
-    if (kind.value === "versions") choiceBox.append(h("span", { class: "muted", text: media.length + added.length > 1 ? "They'll pick between the versions on the left." : "Add at least two versions on the left first." }));
-    if (kind.value === "texts") { drawTexts(); choiceBox.append(optsBox, h("span", { class: "muted", text: "The wordings show under the artwork. They can also write a note, for example to ask for a mix." })); }
+    choiceBox.replaceChildren(h("div", { class: "label", text: "Ask the client to pick?" }),
+      h("label", { class: "row" }, askV, "Which design version they prefer (the versions on the left)"));
+    if (askV.checked) choiceBox.append(vQuestion, h("span", { class: "muted", text: media.length + added.length > 1 ? "Only for real alternatives, not sizes or carousel cards." : "Add at least two versions on the left first." }));
+    choiceBox.append(h("label", { class: "row" }, askT, "Which caption or wording they prefer"));
+    if (askT.checked) { drawTexts(); choiceBox.append(question, optsBox, h("span", { class: "muted", text: "The wordings show under the artwork. They can also write a note, for example to ask for a mix." })); }
   };
-  kind.addEventListener("change", drawChoice); drawChoice();
+  askV.addEventListener("change", drawChoice); askT.addEventListener("change", drawChoice); drawChoice();
 
   const mediaBox = h("div", { class: "media" });
   const drawMedia = () => {
@@ -392,25 +395,29 @@ function itemEditor(c, r, it, idx, items, fb) {
   const save = async () => {
     try {
       busy("Saving " + (title.value.trim() || it.title) + "…");
-      let choice = null;
-      if (kind.value === "texts") {
+      let textQ = null, versionQ = null;
+      if (askT.checked) {
         const t = texts.map((x) => x.trim()).filter(Boolean);
         if (t.length < 2) throw new Error("Give at least two wordings.");
-        choice = { kind: "texts", question: question.value.trim() || "Which words do you prefer?", options: t.map((x, i) => ({ id: "t" + (i + 1), label: "Option " + "ABCDEFGHIJ"[i], text: x })) };
+        // keep option labels (e.g. "Option B: the dialogue (recommended)") when the wording itself hasn't changed
+        textQ = { kind: "texts", question: question.value.trim() || "Which caption do you prefer?", options: t.map((x, i) => ({ id: "t" + (i + 1), label: tq?.options?.find((o) => o.text === x)?.label || "Option " + "ABCDEFGHIJ"[i], text: x })) };
       }
       const captionNew = caption.value.trim() || null;
       const mediaChanged = added.length > 0 || media.length !== it.media.length;
-      const textsChanged = JSON.stringify(choice?.options || null) !== JSON.stringify(it.choice?.kind === "texts" ? it.choice.options : null);
+      const textsChanged = JSON.stringify((textQ?.options || []).map((o) => o.text)) !== JSON.stringify((tq?.options || []).map((o) => o.text));
       const contentChanged = mediaChanged || captionNew !== (it.caption || null) || textsChanged;
       const hasFeedback = onThis.some((f) => f.item_version === it.version);
       const version = contentChanged && hasFeedback ? it.version + 1 : it.version;
       const uploaded = await uploadMedia(c, r.id, it.id, version, added, media.map((m) => m.id));
       const finalMedia = [...media, ...uploaded];
       if (!finalMedia.length) throw new Error("A piece needs at least one picture or reel.");
-      if (kind.value === "versions") {
-        if (finalMedia.length < 2) throw new Error("Pick-one between versions needs at least two versions.");
-        choice = { kind: "versions", question: question.value.trim() || "Which one do you prefer?", options: finalMedia.map((m) => ({ id: m.id, label: m.label })) };
+      if (askV.checked) {
+        if (finalMedia.length < 2) throw new Error("Picking a design needs at least two versions.");
+        versionQ = { kind: "versions", question: vQuestion.value.trim() || "Which design do you prefer?", options: finalMedia.map((m) => ({ id: m.id, label: m.label })) };
       }
+      // one question is saved on its own; two are saved as a list (design first, then caption)
+      const both = [versionQ, textQ].filter(Boolean);
+      const choice = both.length === 2 ? [{ key: "design", ...versionQ }, { key: "caption", ...textQ }] : both[0] || null;
       await q(sb.from("items").update({ title: title.value.trim() || it.title, group_name: group.value.trim() || null, caption: captionNew, note: note.value.trim() || null, media: finalMedia, choice, version }).eq("id", it.id));
       busy(null);
       S.flash = { id: it.id, text: version > it.version ? `Saved as version ${version}. The client sees it as waiting again.` : "Saved." };

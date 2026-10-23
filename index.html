@@ -314,7 +314,22 @@ const DECISION = {
   comment: { label: "Just a comment", past: "Comment", cls: "wait" },
   choose: { label: "Pick this", past: "Picked", cls: "ok" },
 };
-const optionLabel = (item, id) => item.choice?.options?.find((o) => o.id === id)?.label || id;
+// A piece can ask one pick-one question (item.choice = {kind, question, options}) or several
+// (item.choice = [{key, kind, question, options}, ...], e.g. design version AND caption).
+function questionsOf(item) {
+  const c = item.choice; if (!c) return [];
+  if (Array.isArray(c)) return c.filter((q) => q.options?.length);
+  return c.options?.length ? [{ ...c, key: "_" }] : [];
+}
+function picksOf(item, raw) {
+  if (raw == null) return {};
+  if (Array.isArray(item.choice)) { try { return JSON.parse(raw) || {}; } catch { return {}; } }
+  return { _: raw };
+}
+function picksText(item, raw) {
+  const p = picksOf(item, raw);
+  return questionsOf(item).filter((q) => p[q.key]).map((q) => `\u201c${q.options.find((o) => o.id === p[q.key])?.label || p[q.key]}\u201d`).join(" and ");
+}
 
 // ---------- talking to the review store ----------
 async function rpc(fn, args) {
@@ -368,7 +383,7 @@ function badge(item) {
   const st = statusOf(item);
   if (st.kind === "approve") return h("span", { class: "badge ok", text: "Approved by " + st.by });
   if (st.kind === "change") return h("span", { class: "badge chg", text: "Changes asked by " + st.by });
-  if (st.kind === "choose") return h("span", { class: "badge ok", text: `${st.by} picked “${optionLabel(item, st.choice)}”` });
+  if (st.kind === "choose") return h("span", { class: "badge ok", text: `${st.by} picked ${picksText(item, st.choice)}` });
   return h("span", { class: "badge wait", text: "Waiting for a look" });
 }
 
@@ -586,26 +601,31 @@ function renderStory() {
   if (it.note) panel.append(h("div", { class: "mnote" }, h("b", { text: "Note from M7Alpha" }), h("span", { text: it.note })));
   if (it.caption) panel.append(h("div", { class: "label", text: "Caption" }), h("p", { class: "cap", text: it.caption }));
 
-  const choice = it.choice?.options?.length ? it.choice : null;
+  const questions = questionsOf(it), choice = questions.length ? questions : null;
   if (choice) {
-    panel.append(h("div", { class: "label", text: choice.question || (choice.kind === "texts" ? "Which words do you prefer?" : "Which one do you prefer?") }),
-      h("div", { class: "options" }, choice.options.map((o) => h("button", {
-        type: "button", class: "opt", "aria-pressed": String(draft.decision === "choose" && draft.choice === o.id),
-        onclick: () => {
-          const dr = getDraft(it), same = dr.decision === "choose" && dr.choice === o.id;
-          dr.decision = same ? null : "choose"; dr.choice = same ? null : o.id; putDraft(it, dr);
-          if (choice.kind === "versions" && !same && it.media.some((m) => m.id === o.id)) S.variant[it.id] = o.id;
-          renderStory();
-        },
-      }, h("b", { text: o.label }), h("span", { class: "tick", html: ICON.approve }), o.text ? h("span", { class: "opttext", text: o.text }) : null))),
-      h("div", { class: "label", text: "Or" }));
+    for (const q of questions) {
+      panel.append(h("div", { class: "label", text: q.question || (q.kind === "texts" ? "Which words do you prefer?" : "Which design do you prefer?") }),
+        h("div", { class: "options" }, q.options.map((o) => h("button", {
+          type: "button", class: "opt", "aria-pressed": String(draft.decision === "choose" && draft.picks?.[q.key] === o.id),
+          onclick: () => {
+            const dr = getDraft(it); dr.picks = dr.decision === "choose" ? { ...(dr.picks || {}) } : {};
+            const same = dr.picks[q.key] === o.id;
+            if (same) delete dr.picks[q.key]; else dr.picks[q.key] = o.id;
+            dr.decision = Object.keys(dr.picks).length ? "choose" : null; putDraft(it, dr);
+            if (q.kind === "versions" && !same && it.media.some((m) => m.id === o.id)) S.variant[it.id] = o.id;
+            renderStory();
+          },
+        }, h("b", { text: o.label }), h("span", { class: "tick", html: ICON.approve }), o.text ? h("span", { class: "opttext", text: o.text }) : null))));
+    }
+    if (questions.length > 1) panel.append(h("p", { class: "hint", text: "Pick one in each list, or just the ones you have a view on." }));
+    panel.append(h("div", { class: "label", text: "Or" }));
   } else {
     panel.append(h("div", { class: "label", text: "What do you think?" }));
   }
   const kinds = Object.entries(DECISION).filter(([k]) => k !== "choose" && !(choice && k === "approve"));
   const decide = h("div", { class: "decide" + (choice ? " two" : "") }, kinds.map(([k, d]) => h("button", {
     type: "button", class: "dec", "data-d": k, "aria-pressed": String(draft.decision === k),
-    onclick: (e) => { const dr = getDraft(it); dr.decision = dr.decision === k ? null : k; dr.choice = null; putDraft(it, dr); if (choice) return renderStory(); decide.querySelectorAll(".dec").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.d === dr.decision))); updateSend(); if (k !== "approve" && dr.decision) comment.focus(); },
+    onclick: (e) => { const dr = getDraft(it); dr.decision = dr.decision === k ? null : k; dr.picks = {}; putDraft(it, dr); if (choice) return renderStory(); decide.querySelectorAll(".dec").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.d === dr.decision))); updateSend(); if (k !== "approve" && dr.decision) comment.focus(); },
   }, h("span", { html: ICON[k] }), choice && k === "change" ? "None of these" : d.label)));
   panel.append(decide);
   const comment = h("textarea", { class: "field", placeholder: choice ? "Want a mix? Tell us what to take from each one. (optional)" : "Anything you'd like to say or change? (optional if it looks good)", "aria-label": "Your note" });
@@ -661,7 +681,7 @@ function renderStory() {
       const m = f.marks || {}, hasMarks = (m.strokes?.length || 0) + (m.pins?.length || 0) > 0;
       const variantLabel = it.media.find((x) => x.id === f.variant_id)?.label;
       return h("div", { class: "fb" },
-        h("div", { class: "h" }, h("b", { text: f.reviewer }), h("span", { class: "badge " + DECISION[f.decision].cls, text: f.decision === "choose" ? `Picked “${optionLabel(it, f.choice)}”` : DECISION[f.decision].past }),
+        h("div", { class: "h" }, h("b", { text: f.reviewer }), h("span", { class: "badge " + DECISION[f.decision].cls, text: f.decision === "choose" ? `Picked ${picksText(it, f.choice)}` : DECISION[f.decision].past }),
           h("span", { class: "meta", text: fmtDate(f.created_at) + (variantLabel && it.media.length > 1 ? " · " + variantLabel : "") }),
           f.item_version !== it.version ? h("span", { class: "old", text: "On version " + f.item_version }) : null),
         f.comment ? h("p", { text: f.comment }) : null,
@@ -681,7 +701,7 @@ function renderStory() {
 function canSend(it) {
   const d = getDraft(it);
   const hasMarks = Object.values(d.marks || {}).some((m) => m.strokes.length || m.pins.length);
-  if (d.decision === "approve" || (d.decision === "choose" && d.choice)) return true;
+  if (d.decision === "approve" || (d.decision === "choose" && Object.keys(d.picks || {}).length)) return true;
   return !!(d.comment?.trim() || hasMarks);
 }
 
@@ -816,10 +836,10 @@ async function send(it, status, btn) {
   try {
     for (const j of jobs) {
       const marks = j.marks && (j.marks.strokes.length || j.marks.pins.length) ? j.marks : null;
-      const res = await rpc("submit_feedback", { p_code: S.code, p_passcode: S.pass, p_item_id: it.id, p_item_version: it.version, p_variant_id: j.variant, p_reviewer: name, p_decision: j.decision, p_comment: j.comment, p_marks: marks, p_choice: j.decision === "choose" ? d.choice : null });
+      const res = await rpc("submit_feedback", { p_code: S.code, p_passcode: S.pass, p_item_id: it.id, p_item_version: it.version, p_variant_id: j.variant, p_reviewer: name, p_decision: j.decision, p_comment: j.comment, p_marks: marks, p_choice: j.decision !== "choose" ? null : Array.isArray(it.choice) ? JSON.stringify(d.picks) : d.picks?._ });
       if (res.error === "stale") { status.className = "status err"; status.textContent = "This piece was just updated. We've loaded the new version. Please have another look."; S.sending = false; await load({ quiet: true }); return; }
       if (!res.ok) throw new Error(res.error || "not saved");
-      if (j === jobs[0]) { d.decision = null; d.comment = ""; d.choice = null; }
+      if (j === jobs[0]) { d.decision = null; d.comment = ""; d.picks = {}; }
       delete d.marks[j.variant]; putDraft(it, d);
     }
     store.set(draftKey(it), null);
