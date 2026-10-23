@@ -571,7 +571,12 @@ function renderStory() {
   panel.append(h("div", {},
     it.group ? h("div", { class: "eyebrow", text: it.group }) : null,
     h("h2", { text: it.title }),
-    h("div", { class: "meta", style: "margin-top:4px" }, badge(it), it.version > 1 ? `  Version ${it.version}` : "")));
+    h("div", { class: "meta", style: "margin-top:4px" }, badge(it), it.version > 1 ? `  Version ${it.version}` : ""),
+    h("button", { type: "button", class: "linkbtn", style: "margin-top:8px", text: "Copy link to this post", onclick: async (e) => {
+      const u = `${location.origin}${location.pathname}?c=${encodeURIComponent(S.code)}&p=${it.id.slice(0, 8)}`, b = e.currentTarget;
+      try { await navigator.clipboard.writeText(u); b.textContent = "Link copied"; } catch { prompt("Copy this link:", u); }
+      setTimeout(() => { b.textContent = "Copy link to this post"; }, 2500);
+    } })));
   if (it.media.length > 1) {
     panel.append(h("div", { class: "label", text: "Versions" }), h("div", { class: "variants" }, it.media.map((m) => h("button", {
       type: "button", class: "chip", "aria-pressed": String(m.id === v.id), text: m.label,
