@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#2c6a72">
+<title>M7Alpha Sessions</title>
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+/* M7Alpha session board: which Claude and Astra sessions need Lee, live.
+   Rows come from session_board/watch_sessions.py on Lee's laptop. Only signed-in editors can read them; the database enforces it. */
+:root {
+  --teal: #479aa4; --teal-d: #2c6a72; --orange: #f19b1f;
+  --ink: #111214; --ink-2: #4a5557; --ink-3: #7d8789; --line: #dfe6e6; --bg: #f5f7f6; --card: #fff;
+  --ok: #1f8a5b; --ok-soft: #dff3ea; --warn: #b45d00; --warn-soft: #fdeed8; --err: #b8432f; --err-soft: #f8e2dd;
+  --claude: #c2643c; --claude-soft: #f7e6dd; --astra: #2c6a72; --astra-soft: #e3f1f2;
+  --shadow: 0 1px 2px rgba(17, 18, 20, .05), 0 6px 18px rgba(17, 18, 20, .05);
+  --font: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); font-size: 15px; line-height: 1.45; color: var(--ink); background: var(--bg); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.top { background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+.top .in { max-width: 860px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.logo { height: 24px; display: block; }
+.tag { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--teal-d); background: #e3f1f2; padding: 4px 10px; border-radius: 999px; }
+.pulse { margin-left: auto; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--orange); } .dot.err { background: var(--err); }
+main { max-width: 860px; margin: 0 auto; padding: 18px 16px 60px; display: grid; gap: 22px; }
+h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; line-height: 1.2; }
+h2 { margin: 0 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
+.count { font-size: 12px; background: var(--orange); color: #fff; border-radius: 999px; padding: 1px 8px; letter-spacing: 0; }
+.count.grey { background: #cfd8d8; color: var(--ink-2); }
+.client { margin: 14px 0 6px; font-size: 15px; font-weight: 800; color: var(--ink); }
+.client:first-of-type { margin-top: 0; }
+.list { display: grid; gap: 8px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); display: grid; gap: 6px; }
+.card.approval { border-color: var(--err); box-shadow: inset 4px 0 0 var(--err), var(--shadow); }
+.card.needs { box-shadow: inset 4px 0 0 var(--orange), var(--shadow); }
+.head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.who { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; flex: none; }
+.who.claude { color: var(--claude); background: var(--claude-soft); } .who.astra { color: var(--astra); background: var(--astra-soft); }
+.title { font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ago { font-size: 12.5px; color: var(--ink-3); flex: none; }
+.need { font-size: 16px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.recap { font-size: 13.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.btn { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 7px 13px; font-weight: 700; font-size: 14px; text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: linear-gradient(135deg, #63a9ad 0%, #3f8a91 35%, #2c6a72 100%); color: #fff; border-color: #2c6a72; }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.row .title { font-weight: 600; }
+.row a { color: var(--teal-d); font-weight: 700; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; flex: none; }
+.spin { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+details { background: transparent; }
+summary { cursor: pointer; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary h2 { margin: 0; }
+summary h2::after { content: "Show"; margin-left: auto; font-size: 12px; letter-spacing: .04em; color: var(--teal-d); text-transform: none; font-weight: 700; }
+details[open] summary h2::after { content: "Hide"; }
+details .inner { margin-top: 10px; display: grid; gap: 6px; }
+.search { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; background: #fff; }
+.empty { background: #fff; border: 1px dashed #c8d3d2; border-radius: 14px; padding: 18px; text-align: center; color: var(--ink-2); }
+.muted { color: var(--ink-3); font-size: 13.5px; }
+.gate { max-width: 460px; margin: 10vh auto; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); display: grid; gap: 12px; }
+.field { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: #fff; font-size: 15px; }
+.status { font-size: 14px; font-weight: 600; min-height: 1.3em; } .status.err { color: var(--err); }
+.link { border: 0; background: none; padding: 0; color: var(--teal-d); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-weight: 600; font-size: 14px; }
+.banner.err { background: var(--err-soft); color: var(--err); }
+.foot { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <img class="logo" src="assets/m7alpha-logo.png" alt="M7Alpha">
+  <span class="tag">Sessions</span>
+  <div class="pulse" id="pulse"></div>
+</div></header>
+<main id="app"></main>
+
+<script>
+"use strict";
+const CONFIG = { url: "https://johtcnbucfrolcmejmzm.supabase.co", key: "sb_publishable_WHgAfZzDbPralzbgEdVjXg_5p5CKTFU" };
+const sb = supabase.createClient(CONFIG.url, CONFIG.key, { auth: { persistSession: true, detectSessionInUrl: true, flowType: "implicit" } });
+const PHONE = matchMedia("(pointer: coarse)").matches;   // on a phone, the claude.ai link is the one that opens
+
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) { if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  return el;
+}
+const app = $("#app");
+function ago(iso) {
+  if (!iso) return "";
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.round(s / 60) + " min ago";
+  if (s < 86400) return Math.round(s / 3600) + " h ago";
+  return Math.round(s / 86400) + " d ago";
+}
+
+// ---------- state ----------
+const S = { user: null, rows: new Map(), filter: "", open: false, live: "connecting" };
+
+// ---------- sign in ----------
+async function start() {
+  const { data } = await sb.auth.getSession();
+  S.user = data.session?.user || null;
+  if (!S.user) return renderSignIn();
+  const ok = await sb.rpc("is_editor");
+  if (ok.error || ok.data !== true) return renderNotEditor();
+  await loadAll();
+  subscribe();
+}
+sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" && !S.user) start(); if (ev === "SIGNED_OUT") { S.user = null; renderSignIn(); } });
+
+function renderSignIn(sentTo) {
+  $("#pulse").replaceChildren();
+  const email = h("input", { class: "field", type: "email", autocomplete: "email", placeholder: "you@m7alpha.com", "aria-label": "Email" });
+  const status = h("div", { class: "status" });
+  const send = async () => {
+    const addr = email.value.trim(); if (!addr) return email.focus();
+    status.className = "status"; status.textContent = "Sending…";
+    const { error } = await sb.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: false } });
+    if (error) { status.className = "status err"; status.textContent = "Couldn't send the link: " + error.message; return; }
+    renderSignIn(addr);
+  };
+  email.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+  app.replaceChildren(h("div", { class: "gate" }, h("div", { class: "panel" },
+    h("h1", { text: "Sign in to see your sessions" }),
+    sentTo ? h("p", { text: `We've emailed a sign-in link to ${sentTo}. Open it on this device. It may take a minute, and can land in spam (it comes from Supabase).` })
+           : h("p", { class: "muted", text: "We'll email you a sign-in link. No password needed. You only do this once on each device." }),
+    sentTo ? h("button", { class: "link", text: "Use a different email", onclick: () => renderSignIn() }) : [email, h("div", {}, h("button", { class: "btn primary", text: "Email me a sign-in link", onclick: send })), status])));
+  if (!sentTo) email.focus();
+}
+function renderNotEditor() {
+  app.replaceChildren(h("div", { class: "gate" }, h("div", { class: "panel" },
+    h("h1", { text: "This email can't see the session list" }),
+    h("p", { text: `You're signed in as ${S.user?.email}, which isn't on the M7Alpha editors list.` }),
+    h("div", {}, h("button", { class: "btn", text: "Sign out", onclick: () => sb.auth.signOut() })))));
+}
+
+// ---------- data ----------
+async function loadAll() {
+  const { data, error } = await sb.from("session_board").select("*");
+  if (error) { app.replaceChildren(h("div", { class: "banner err", text: "Couldn't load the list: " + error.message })); return; }
+  S.rows = new Map(data.map((r) => [r.id, r]));
+  render();
+}
+let channel = null;
+function subscribe() {
+  if (channel) sb.removeChannel(channel);
+  channel = sb.channel("session_board")
+    .on("postgres_changes", { event: "*", schema: "public", table: "session_board" }, (p) => {
+      if (p.eventType === "DELETE") S.rows.delete(p.old.id); else S.rows.set(p.new.id, p.new);
+      render();
+    })
+    .subscribe((status) => {
+      const was = S.live;
+      S.live = status === "SUBSCRIBED" ? "live" : (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") ? "down" : "connecting";
+      if (S.live === "live" && was !== "live") loadAll();           // catch anything missed while reconnecting
+      renderPulse();
+    });
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && S.user) { loadAll(); if (S.live !== "live") subscribe(); } });
+setInterval(() => { if (S.user) render(); }, 20000);                 // keep the "x min ago" labels fresh
+setInterval(() => { if (S.user && S.live !== "live") { loadAll(); subscribe(); } }, 60000);
+
+async function markDone(r, btn) {
+  btn.disabled = true; btn.textContent = "Clearing…";
+  const now = new Date().toISOString();
+  const { error } = await sb.from("session_board").update({ dismissed_at: now }).eq("id", r.id);
+  if (error) { btn.disabled = false; btn.textContent = "Done"; alert("Couldn't clear it: " + error.message); return; }
+  S.rows.set(r.id, { ...r, dismissed_at: now }); render();
+}
+
+// ---------- view ----------
+const dismissed = (r) => r.dismissed_at && (!r.turn_ended_at || new Date(r.dismissed_at) >= new Date(r.turn_ended_at));
+const groupOf = (r) => r.kind === "heartbeat" ? null
+  : r.state === "busy" ? "busy"
+  : (r.state === "approval" || r.state === "needs") && !dismissed(r) ? "needs" : "quiet";
+const byClient = (rows) => {
+  const m = new Map();
+  rows.forEach((r) => { const c = r.client || "General"; if (!m.has(c)) m.set(c, []); m.get(c).push(r); });
+  return [...m.entries()].sort((a, b) => a[0] === "General" ? 1 : b[0] === "General" ? -1 : a[0].localeCompare(b[0]));
+};
+const newest = (a, b) => new Date(b.turn_ended_at || b.last_activity || 0) - new Date(a.turn_ended_at || a.last_activity || 0);
+
+function openLinks(r, primary) {
+  const out = [];
+  const desk = r.link && h("a", { class: "btn" + (primary && !PHONE ? " primary" : "") + (primary ? "" : " small"), href: r.link, text: PHONE ? "Open on laptop" : "Open" });
+  const phone = r.phone_link && h("a", { class: "btn" + (primary && PHONE ? " primary" : "") + (primary ? "" : " small"), href: r.phone_link, target: "_blank", rel: "noopener", text: PHONE ? "Open" : "Open on claude.ai" });
+  if (PHONE) { if (phone) out.push(phone); if (desk) out.push(desk); } else { if (desk) out.push(desk); if (phone) out.push(phone); }
+  return out;
+}
+function card(r) {
+  const done = h("button", { class: "btn", text: "Done", title: "Hide this until the session finishes its next turn", onclick: (e) => markDone(r, e.currentTarget) });
+  return h("article", { class: "card " + r.state },
+    h("div", { class: "head" }, h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }), h("span", { class: "title", text: r.title }), h("span", { class: "ago", text: ago(r.turn_ended_at || r.last_activity) })),
+    h("div", { class: "need", text: r.state === "approval" ? "⚠ " + r.needs : r.needs }),
+    h("div", { class: "acts" }, openLinks(r, true), done,
+      r.kind === "astra" && PHONE ? h("span", { class: "muted", text: "Astra chats open on the laptop only." }) : null));
+}
+function line(r, busy) {
+  return h("div", { class: "row" },
+    busy ? h("span", { class: "spin", "aria-hidden": "true" }) : null,
+    h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }),
+    h("span", { class: "title", text: r.title, title: r.recap || "" }),
+    h("span", { class: "ago", text: busy ? "working" : ago(r.turn_ended_at || r.last_activity) }),
+    openLinks(r, false));
+}
+
+function renderPulse() {
+  const hb = S.rows.get("heartbeat");
+  const age = hb ? (Date.now() - new Date(hb.last_activity).getTime()) / 1000 : Infinity;
+  const laptop = age < 90 ? "ok" : age < 600 ? "warn" : "err";
+  const text = S.live !== "live" ? "Reconnecting…" : laptop === "ok" ? "Live" : hb ? "Laptop last checked in " + ago(hb.last_activity) : "Laptop hasn't checked in";
+  $("#pulse").replaceChildren(h("span", { class: "dot " + (S.live !== "live" ? "warn" : laptop) }), h("span", { text }));
+  return laptop;
+}
+
+function render() {
+  const laptop = renderPulse();
+  const all = [...S.rows.values()];
+  const f = S.filter.toLowerCase();
+  const match = (r) => !f || (r.title + " " + r.client + " " + r.needs).toLowerCase().includes(f);
+  const needs = all.filter((r) => groupOf(r) === "needs" && match(r));
+  const busy = all.filter((r) => groupOf(r) === "busy" && match(r)).sort(newest);
+  const quiet = all.filter((r) => groupOf(r) === "quiet" && match(r)).sort(newest);
+  document.title = (needs.length ? `(${needs.length}) ` : "") + "M7Alpha Sessions";
+
+  const search = h("input", { class: "search", type: "search", placeholder: "Find a session or client", value: S.filter, "aria-label": "Find a session or client",
+    oninput: (e) => { S.filter = e.target.value; render(); const s = $(".search"); s.focus(); s.setSelectionRange(s.value.length, s.value.length); } });
+
+  const quietBox = h("details", { ontoggle: (e) => { S.open = e.currentTarget.open; } },
+    h("summary", {}, h("h2", {}, "Nothing needed from you", h("span", { class: "count grey", text: quiet.length }))),
+    h("div", { class: "inner" }, quiet.length ? byClient(quiet).map(([c, rs]) => [h("div", { class: "client", text: c }), rs.map((r) => line(r, false))]) : h("div", { class: "muted", text: "None." })));
+  if (S.open) quietBox.open = true;
+
+  app.replaceChildren(
+    laptop === "err" ? h("div", { class: "banner", text: "Your laptop hasn't sent an update for a while (it may be asleep or off). The list shows the last known state." }) : null,
+    h("div", {}, search),
+    h("section", {},
+      h("h2", {}, "Needs you", h("span", { class: "count" + (needs.length ? "" : " grey"), text: needs.length })),
+      needs.length ? byClient(needs).map(([c, rs]) => [h("div", { class: "client", text: c }), h("div", { class: "list" }, rs.sort(newest).map(card))])
+                   : h("div", { class: "empty", text: f ? "Nothing matches." : "Nothing needs you right now." })),
+    busy.length ? h("section", {}, h("h2", {}, "Working now", h("span", { class: "count grey", text: busy.length })), h("div", { class: "list" }, busy.map((r) => line(r, true)))) : null,
+    h("section", {}, quietBox),
+    h("div", { class: "foot muted" }, h("span", { text: "Updates by itself. Done hides a row until that session finishes its next turn." }),
+      h("button", { class: "link", text: "Sign out", onclick: () => sb.auth.signOut() })));
+}
+
+start();
+</script>
+</body>
+</html>
