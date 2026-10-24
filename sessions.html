@@ -101,18 +101,19 @@ details .inner { margin-top: 10px; display: grid; gap: 6px; }
   --shadow: 0 8px 32px rgba(0,0,0,.35);
   color-scheme: dark;
 }
-body { background: radial-gradient(900px 600px at 12% -10%, rgba(71,154,164,.35), transparent 60%),
-                    radial-gradient(800px 500px at 95% 15%, rgba(241,155,31,.16), transparent 60%),
-                    radial-gradient(900px 700px at 50% 110%, rgba(44,106,114,.3), transparent 60%), var(--bg);
+body { background: radial-gradient(520px 420px at 38% 18%, rgba(83,192,170,.42), transparent 70%),     /* glows sit behind the card column so the glass has colour to blur */
+                    radial-gradient(480px 380px at 64% 48%, rgba(241,155,31,.26), transparent 70%),
+                    radial-gradient(560px 460px at 40% 82%, rgba(71,154,164,.40), transparent 70%),
+                    radial-gradient(900px 600px at 10% -10%, rgba(44,106,114,.35), transparent 60%), var(--bg);
        background-attachment: fixed; }
 .top { background: rgba(11,18,20,.6); border-bottom: 1px solid var(--glass-line); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
 .logo { filter: brightness(1.15); }
 .tag { color: #bfe7ec; background: rgba(127,209,218,.14); }
 .card, .row, .panel, .empty, .search, .field {
-  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
-  border: 1px solid var(--glass-line);
-  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), var(--shadow);
+  background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05) 55%, rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.18);
+  -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), var(--shadow);
 }
 .card.needs { box-shadow: inset 4px 0 0 var(--orange), inset 0 1px 0 rgba(255,255,255,.08), var(--shadow); }
 .card.approval { border-color: rgba(255,122,102,.5); box-shadow: inset 4px 0 0 var(--err), inset 0 1px 0 rgba(255,255,255,.08), var(--shadow); }
