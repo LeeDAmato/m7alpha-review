@@ -483,7 +483,8 @@ function wallCard(r, i, n, isCur, size) {
     h("div", { class: "wtop" }, h("span", { class: "wclient", text: r.client || "General" }), h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }),
       h("span", { class: "ago", text: ago(r.turn_ended_at || r.last_activity) }), h("span", { class: "wpos", text: (i + 1) + " of " + n })),
     h("div", { class: "wtitle", text: r.title }),
-    h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state !== "approval" ? "What it needs from you" : /^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission" }), r.needs),
+    h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state !== "approval" ? "What it needs from you" : /^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission" }),
+      (r.needs || "").charAt(0).toUpperCase() + (r.needs || "").slice(1)),
     h("div", { class: "wbody" }, body),
     !isCur ? null : r.state === "approval"
       ? h("div", { class: "wnote", text: /^Answer its question/.test(r.needs) ? "This question can only be answered inside the session. Open it, pick an answer, then come back." : "A permission can only be given inside the session. Open it, then come back." })
