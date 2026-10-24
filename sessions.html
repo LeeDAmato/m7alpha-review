@@ -254,6 +254,12 @@ function replyStatus(r) {
   }
   if (x.status === "sending") return h("div", { class: "rstatus", text: "Sending " + said + "… " + x.detail });
   if (x.status === "delivered") return h("div", { class: "rstatus ok", text: "✓ Delivered " + said + " " + ago(x.updated_at) + "." });
+  if (x.status === "held") {                       // the Codex app has this chat open: hand the reply to the app, filled in
+    const tid = r.id.split(":")[1];
+    return h("div", { class: "rstatus wait" }, "The Codex app has this chat open, so " + said + " can't go in directly. ",
+      h("a", { class: "btn small primary", href: "codex://threads/" + tid + "?prompt=" + encodeURIComponent(x.message), text: "Open in Codex with my reply filled in" }),
+      " then press Enter.");
+  }
   return h("div", { class: "rstatus err", text: "Didn't send " + said + ": " + x.detail });
 }
 function replyBox(r) {
