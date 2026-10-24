@@ -83,6 +83,15 @@ details .inner { margin-top: 10px; display: grid; gap: 6px; }
 .link { border: 0; background: none; padding: 0; color: var(--teal-d); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .banner { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-weight: 600; font-size: 14px; }
 .banner.err { background: var(--err-soft); color: var(--err); }
+.reply { display: grid; gap: 6px; flex-basis: 100%; margin-top: 4px; }
+.reply textarea { width: 100%; min-height: 44px; max-height: 220px; resize: vertical; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fbfdfc; font: inherit; font-size: 14.5px; line-height: 1.4; }
+.reply textarea:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px rgba(71,154,164,.18); background: #fff; }
+.reply .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn.opt { border-color: var(--teal-d); color: var(--teal-d); }
+.btn:disabled { opacity: .5; cursor: default; }
+.rstatus { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.rstatus.ok { color: var(--ok); } .rstatus.err { color: var(--err); } .rstatus.wait { color: var(--warn); }
+.hint { font-size: 12.5px; color: var(--ink-3); margin-left: auto; }
 .foot { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 </style>
 </head>
@@ -124,7 +133,7 @@ function ago(iso) {
 }
 
 // ---------- state ----------
-const S = { user: null, rows: new Map(), filter: "", open: false, live: "connecting" };
+const S = { user: null, rows: new Map(), replies: new Map(), drafts: {}, openReply: new Set(), filter: "", open: false, live: "connecting", deferred: false };
 
 // ---------- sign in ----------
 async function start() {
@@ -169,6 +178,9 @@ async function loadAll() {
   const { data, error } = await sb.from("session_board").select("*");
   if (error) { app.replaceChildren(h("div", { class: "banner err", text: "Couldn't load the list: " + error.message })); return; }
   S.rows = new Map(data.map((r) => [r.id, r]));
+  const since = new Date(Date.now() - 2 * 86400000).toISOString();
+  const rep = await sb.from("session_replies").select("*").gte("created_at", since).order("created_at");
+  if (!rep.error) { S.replies = new Map(); rep.data.forEach((x) => S.replies.set(x.board_id, x)); }
   render();
 }
 let channel = null;
@@ -177,6 +189,10 @@ function subscribe() {
   channel = sb.channel("session_board")
     .on("postgres_changes", { event: "*", schema: "public", table: "session_board" }, (p) => {
       if (p.eventType === "DELETE") S.rows.delete(p.old.id); else S.rows.set(p.new.id, p.new);
+      render();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "session_replies" }, (p) => {
+      if (p.new && p.new.board_id) { const cur = S.replies.get(p.new.board_id); if (!cur || cur.id === p.new.id || new Date(p.new.created_at) >= new Date(cur.created_at)) S.replies.set(p.new.board_id, p.new); }
       render();
     })
     .subscribe((status) => {
@@ -217,21 +233,67 @@ function openLinks(r, primary) {
   if (PHONE) { if (phone) out.push(phone); if (desk) out.push(desk); } else { if (desk) out.push(desk); if (phone) out.push(phone); }
   return out;
 }
+const relayOn = () => { const b = S.rows.get("relay"); return b && Date.now() - new Date(b.last_activity).getTime() < 90000; };
+async function sendReply(r, text, btn) {
+  text = (text || "").trim(); if (!text) return;
+  if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+  const { data, error } = await sb.from("session_replies").insert({ board_id: r.id, kind: r.kind, title: r.title, message: text }).select().single();
+  if (error) { if (btn) { btn.disabled = false; btn.textContent = "Send"; } alert("Couldn't send it: " + error.message); return; }
+  delete S.drafts[r.id]; S.replies.set(r.id, data);
+  if (document.activeElement) document.activeElement.blur();
+  render();
+}
+function replyStatus(r) {
+  const x = S.replies.get(r.id);
+  if (!x || (x.status === "delivered" && Date.now() - new Date(x.updated_at).getTime() > 6 * 3600000)) return null;
+  const said = "\u201c" + (x.message.length > 60 ? x.message.slice(0, 59) + "…" : x.message) + "\u201d";
+  if (x.status === "pending") {
+    const why = r.kind === "claude" && !relayOn() ? " The relay session isn't running, so it will go when the relay is back."
+              : r.kind === "astra" && r.state === "busy" ? " Astra is still working; it goes in when this turn ends." : "";
+    return h("div", { class: "rstatus wait", text: "Waiting to send " + said + "." + why });
+  }
+  if (x.status === "sending") return h("div", { class: "rstatus", text: "Sending " + said + "… " + x.detail });
+  if (x.status === "delivered") return h("div", { class: "rstatus ok", text: "✓ Delivered " + said + " " + ago(x.updated_at) + "." });
+  return h("div", { class: "rstatus err", text: "Didn't send " + said + ": " + x.detail });
+}
+function replyBox(r) {
+  const ta = h("textarea", { class: "reply-text", rows: 2, placeholder: r.kind === "astra" ? "Reply to Astra…" : "Reply to this session…", "aria-label": "Reply to " + r.title,
+    oninput: (e) => { S.drafts[r.id] = e.target.value; },
+    onkeydown: (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendReply(r, ta.value, send); } },
+    onblur: () => { if (S.deferred) setTimeout(() => { if (!document.activeElement?.classList.contains("reply-text")) render(); }, 150); } });
+  ta.value = S.drafts[r.id] || "";
+  const send = h("button", { class: "btn primary", text: "Send", onclick: () => sendReply(r, ta.value, send) });
+  const opts = (r.options || []).map((o) => h("button", { class: "btn opt", text: o.label, title: o.message, onclick: (e) => sendReply(r, o.message, e.currentTarget) }));
+  return h("div", { class: "reply" },
+    opts.length ? h("div", { class: "bar" }, opts) : null,
+    ta,
+    h("div", { class: "bar" }, send, replyStatus(r),
+      h("span", { class: "hint", text: r.kind === "claude" ? "Ctrl+Enter sends. Passed on by the relay session." : "Ctrl+Enter sends. Goes in as you." })));
+}
 function card(r) {
   const done = h("button", { class: "btn", text: "Done", title: "Hide this until the session finishes its next turn", onclick: (e) => markDone(r, e.currentTarget) });
   return h("article", { class: "card " + r.state },
     h("div", { class: "head" }, h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }), h("span", { class: "title", text: r.title }), h("span", { class: "ago", text: ago(r.turn_ended_at || r.last_activity) })),
     h("div", { class: "need", text: r.state === "approval" ? "⚠ " + r.needs : r.needs }),
+    replyBox(r),
     h("div", { class: "acts" }, openLinks(r, true), done,
       r.kind === "astra" && PHONE ? h("span", { class: "muted", text: "Astra chats open on the laptop only." }) : null));
 }
 function line(r, busy) {
-  return h("div", { class: "row" },
+  const open = S.openReply.has(r.id), st = S.replies.get(r.id)?.status;
+  return h("div", { class: "row", "data-id": r.id },
     busy ? h("span", { class: "spin", "aria-hidden": "true" }) : null,
     h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }),
     h("span", { class: "title", text: r.title, title: r.recap || "" }),
     h("span", { class: "ago", text: busy ? "working" : ago(r.turn_ended_at || r.last_activity) }),
-    openLinks(r, false));
+    h("button", { class: "btn small", text: open ? "Close" : "Reply", onclick: () => toggleReply(r) }),
+    openLinks(r, false),
+    open ? replyBox(r) : (st === "pending" || st === "sending" || st === "failed") ? replyStatus(r) : null);
+}
+function toggleReply(r) {
+  if (S.openReply.has(r.id)) S.openReply.delete(r.id); else S.openReply.add(r.id);
+  render();
+  if (S.openReply.has(r.id)) setTimeout(() => { const el = document.querySelector('[data-id="' + CSS.escape(r.id) + '"] textarea'); if (el) el.focus(); }, 0);
 }
 
 function renderPulse() {
@@ -244,6 +306,9 @@ function renderPulse() {
 }
 
 function render() {
+  if (document.activeElement?.classList.contains("reply-text")) { S.deferred = true; renderPulse(); return; }   // never wipe a reply being typed
+  S.deferred = false;
+  const searching = document.activeElement?.classList.contains("search");
   const laptop = renderPulse();
   const all = [...S.rows.values()];
   const f = S.filter.toLowerCase();
@@ -254,7 +319,7 @@ function render() {
   document.title = (needs.length ? `(${needs.length}) ` : "") + "M7Alpha Sessions";
 
   const search = h("input", { class: "search", type: "search", placeholder: "Find a session or client", value: S.filter, "aria-label": "Find a session or client",
-    oninput: (e) => { S.filter = e.target.value; render(); const s = $(".search"); s.focus(); s.setSelectionRange(s.value.length, s.value.length); } });
+    oninput: (e) => { S.filter = e.target.value; render(); } });
 
   const quietBox = h("details", { ontoggle: (e) => { S.open = e.currentTarget.open; } },
     h("summary", {}, h("h2", {}, "Nothing needed from you", h("span", { class: "count grey", text: quiet.length }))),
@@ -270,8 +335,9 @@ function render() {
                    : h("div", { class: "empty", text: f ? "Nothing matches." : "Nothing needs you right now." })),
     busy.length ? h("section", {}, h("h2", {}, "Working now", h("span", { class: "count grey", text: busy.length })), h("div", { class: "list" }, busy.map((r) => line(r, true)))) : null,
     h("section", {}, quietBox),
-    h("div", { class: "foot muted" }, h("span", { text: "Updates by itself. Done hides a row until that session finishes its next turn." }),
+    h("div", { class: "foot muted" }, h("span", { text: "Updates by itself. Done hides a row until that session finishes its next turn. " + (relayOn() ? "Replies to Claude sessions: relay on." : "Replies to Claude sessions: relay off, they wait until it is back.") }),
       h("button", { class: "link", text: "Sign out", onclick: () => sb.auth.signOut() }))].flat(Infinity).filter(Boolean));
+  if (searching) { const s = $(".search"); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
 }
 
 start();
