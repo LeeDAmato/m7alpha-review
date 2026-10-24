@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#2c6a72">
+<meta name="theme-color" content="#0b1214">
 <title>M7Alpha Sessions</title>
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="apple-touch-icon" href="assets/icon.png">
@@ -92,6 +92,46 @@ details .inner { margin-top: 10px; display: grid; gap: 6px; }
 .rstatus { font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .rstatus.ok { color: var(--ok); } .rstatus.err { color: var(--err); } .rstatus.wait { color: var(--warn); }
 .hint { font-size: 12.5px; color: var(--ink-3); margin-left: auto; }
+/* Dark background, glass panels (Lee, 24 Oct 2026). Overrides the light look above. */
+:root {
+  --ink: #eef4f4; --ink-2: #b9c8c9; --ink-3: #8a9c9e; --line: rgba(255,255,255,.12); --bg: #0b1214;
+  --glass: rgba(255,255,255,.065); --glass-2: rgba(255,255,255,.1); --glass-line: rgba(255,255,255,.14);
+  --ok: #4fd39a; --ok-soft: rgba(79,211,154,.14); --warn: #f5b450; --warn-soft: rgba(245,180,80,.14); --err: #ff7a66; --err-soft: rgba(255,122,102,.14);
+  --claude: #f0a07c; --claude-soft: rgba(240,160,124,.16); --astra: #7fd1da; --astra-soft: rgba(127,209,218,.14);
+  --shadow: 0 8px 32px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+body { background: radial-gradient(900px 600px at 12% -10%, rgba(71,154,164,.35), transparent 60%),
+                    radial-gradient(800px 500px at 95% 15%, rgba(241,155,31,.16), transparent 60%),
+                    radial-gradient(900px 700px at 50% 110%, rgba(44,106,114,.3), transparent 60%), var(--bg);
+       background-attachment: fixed; }
+.top { background: rgba(11,18,20,.6); border-bottom: 1px solid var(--glass-line); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+.logo { filter: brightness(1.15); }
+.tag { color: #bfe7ec; background: rgba(127,209,218,.14); }
+.card, .row, .panel, .empty, .search, .field {
+  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
+  border: 1px solid var(--glass-line);
+  -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), var(--shadow);
+}
+.card.needs { box-shadow: inset 4px 0 0 var(--orange), inset 0 1px 0 rgba(255,255,255,.08), var(--shadow); }
+.card.approval { border-color: rgba(255,122,102,.5); box-shadow: inset 4px 0 0 var(--err), inset 0 1px 0 rgba(255,255,255,.08), var(--shadow); }
+.row { box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+.search, .field { color: var(--ink); }
+.search::placeholder, .field::placeholder, .reply textarea::placeholder { color: var(--ink-3); }
+.btn { background: rgba(255,255,255,.07); border-color: var(--glass-line); color: var(--ink); }
+.btn:hover { border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.12); }
+.btn.primary { background: linear-gradient(135deg, #5fb6bd 0%, #3f8a91 45%, #2c6a72 100%); border-color: rgba(127,209,218,.5); color: #fff; }
+.btn.opt { border-color: rgba(127,209,218,.55); color: #bfe7ec; }
+.row a, .link { color: #9fdde4; }
+.reply textarea { background: rgba(0,0,0,.25); border-color: var(--glass-line); color: var(--ink); }
+.reply textarea:focus { background: rgba(0,0,0,.35); border-color: #7fd1da; box-shadow: 0 0 0 3px rgba(127,209,218,.18); }
+.count.grey { background: rgba(255,255,255,.14); color: var(--ink-2); }
+.client { color: #dfeaea; }
+.empty { color: var(--ink-2); border-style: dashed; }
+.banner { border: 1px solid rgba(245,180,80,.3); }
+.banner.err { border-color: rgba(255,122,102,.3); }
+:focus-visible { outline-color: #7fd1da; }
 .foot { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 </style>
 </head>
