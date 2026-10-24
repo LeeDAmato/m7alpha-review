@@ -156,7 +156,7 @@ body.wall-mode main { max-width: none; padding: 0; }
   background: linear-gradient(160deg, rgba(22,34,37,.92), rgba(14,21,23,.94)); border: 1px solid rgba(255,255,255,.16);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(83,192,170,.08);
   transition: opacity .6s, filter .6s; }
-.wcard.away { opacity: .38; filter: saturate(.6) brightness(.8); cursor: pointer; }
+.wcard.away { filter: brightness(.5) saturate(.6); cursor: pointer; }   /* dimmed, not faded: the card keeps its solid back */
 .wcard.away * { pointer-events: none; }
 .wcard .cdot { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #efc319; box-shadow: 0 0 10px 2px rgba(239,195,25,.7); }
 .wcard .cdot.tl { left: -5px; top: -5px; } .wcard .cdot.tr { right: -5px; top: -5px; } .wcard .cdot.bl { left: -5px; bottom: -5px; } .wcard .cdot.br { right: -5px; bottom: -5px; }
@@ -483,10 +483,10 @@ function wallCard(r, i, n, isCur, size) {
     h("div", { class: "wtop" }, h("span", { class: "wclient", text: r.client || "General" }), h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }),
       h("span", { class: "ago", text: ago(r.turn_ended_at || r.last_activity) }), h("span", { class: "wpos", text: (i + 1) + " of " + n })),
     h("div", { class: "wtitle", text: r.title }),
-    h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state === "approval" ? "Waiting for your permission" : "What it needs from you" }), r.needs),
+    h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state !== "approval" ? "What it needs from you" : /^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission" }), r.needs),
     h("div", { class: "wbody" }, body),
     !isCur ? null : r.state === "approval"
-      ? h("div", { class: "wnote", text: "A permission can only be given inside the session. Open it, then come back." })
+      ? h("div", { class: "wnote", text: /^Answer its question/.test(r.needs) ? "This question can only be answered inside the session. Open it, pick an answer, then come back." : "A permission can only be given inside the session. Open it, then come back." })
       : replyBox(r),
     h("div", { class: "wfoot" }, openLinks(r, true), done));
 }
