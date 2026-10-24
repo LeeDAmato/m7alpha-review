@@ -357,8 +357,11 @@ async function sendReply(r, text, btn) {
   }
   const { data, error } = await sb.from("session_replies").insert({ board_id: r.id, kind: r.kind, title: r.title, message: text, files }).select().single();
   if (error) { if (btn) { btn.disabled = false; btn.textContent = "Send"; } alert("Couldn't send it: " + error.message); return; }
+  if (S.mode === "wall") {                                 // the answered card leaves the wall: move on to the one after it
+    const L = wallList(), i = L.findIndex((c) => c.id === r.id);   // worked out before the reply is recorded, while the card is still in the list
+    S.cur = (L[i + 1] || L[i - 1] || {}).id || null;
+  }
   delete S.drafts[r.id]; delete S.files[r.id]; S.replies.set(r.id, data);
-  if (S.mode === "wall") S.advanceAfter = r.id;            // move on to the next card once it's on its way
   if (document.activeElement) document.activeElement.blur();
   render();
 }
@@ -483,17 +486,33 @@ function wallCard(r, i, n, isCur, size) {
     h("div", { class: "wtop" }, h("span", { class: "wclient", text: r.client || "General" }), h("span", { class: "who " + r.kind, text: r.kind === "astra" ? "Astra" : "Claude" }),
       h("span", { class: "ago", text: ago(r.turn_ended_at || r.last_activity) }), h("span", { class: "wpos", text: (i + 1) + " of " + n })),
     h("div", { class: "wtitle", text: r.title }),
-    h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state !== "approval" ? "What it needs from you" : /^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission" }),
-      (r.needs || "").charAt(0).toUpperCase() + (r.needs || "").slice(1)),
+    h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state === "approval" ? (/^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission")
+        : replyPhase(r) === "answered" ? (r.needs ? "It answered your reply, and needs" : "It answered your reply") : "What it needs from you" }),
+      ((t) => t.charAt(0).toUpperCase() + t.slice(1))(r.needs || (replyPhase(r) === "answered" ? r.recap || "" : ""))),
     h("div", { class: "wbody" }, body),
     !isCur ? null : r.state === "approval"
       ? h("div", { class: "wnote", text: /^Answer its question/.test(r.needs) ? "This question can only be answered inside the session. Open it, pick an answer, then come back." : "A permission can only be given inside the session. Open it, then come back." })
       : replyBox(r),
     h("div", { class: "wfoot" }, openLinks(r, true), done));
 }
+// Lee, 24 Oct 2026: a card leaves the wall as soon as he replies, and comes back once the session has
+// answered, with its answer, even if it asks nothing new. Done clears it as before.
+function replyPhase(r) {
+  const x = S.replies.get(r.id);
+  if (!x || x.status === "failed" || x.status === "held") return null;           // nothing sent, or it needs him again
+  const answered = r.turn_ended_at && new Date(r.turn_ended_at) > new Date(x.created_at) && r.state !== "busy";
+  return answered ? "answered" : "waiting";
+}
+function onWall(r) {
+  if (r.kind === "heartbeat") return false;
+  const phase = replyPhase(r);
+  if (phase === "waiting") return false;
+  if (phase === "answered") return !dismissed(r);
+  return groupOf(r) === "needs";
+}
 function wallList() {
   const all = [...S.rows.values()];
-  return all.filter((r) => groupOf(r) === "needs").sort((a, b) =>
+  return all.filter(onWall).sort((a, b) =>
     (a.state === "approval" ? 0 : 1) - (b.state === "approval" ? 0 : 1) || (a.client || "").localeCompare(b.client || "") || newest(a, b));
 }
 function goTo(id) { S.cur = id; render(true); }
