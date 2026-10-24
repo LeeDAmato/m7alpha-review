@@ -488,7 +488,7 @@ function wallCard(r, i, n, isCur, size) {
     h("div", { class: "wtitle", text: r.title }),
     h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state === "approval" ? (/^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission")
         : replyPhase(r) === "answered" ? (r.needs ? "It answered your reply, and needs" : "It answered your reply") : "What it needs from you" }),
-      ((t) => t.charAt(0).toUpperCase() + t.slice(1))(r.needs || (replyPhase(r) === "answered" ? r.recap || "" : ""))),
+      ((t) => t.charAt(0).toUpperCase() + t.slice(1))(r.needs || (replyPhase(r) === "answered" ? firstSentence(r.recap) : ""))),
     h("div", { class: "wbody" }, body),
     !isCur ? null : r.state === "approval"
       ? h("div", { class: "wnote", text: /^Answer its question/.test(r.needs) ? "This question can only be answered inside the session. Open it, pick an answer, then come back." : "A permission can only be given inside the session. Open it, then come back." })
@@ -497,6 +497,10 @@ function wallCard(r, i, n, isCur, size) {
 }
 // Lee, 24 Oct 2026: a card leaves the wall as soon as he replies, and comes back once the session has
 // answered, with its answer, even if it asks nothing new. Done clears it as before.
+function firstSentence(t) {                      // headline for an answer with no question: its first sentence, short
+  const s = (t || "").split(/(?<=[.!?:])\s+|\s+[-–•]\s+/)[0] || "";
+  return s.length > 110 ? s.slice(0, 109).replace(/\s+\S*$/, "") + "…" : s;
+}
 function replyPhase(r) {
   const x = S.replies.get(r.id);
   if (!x || x.status === "failed" || x.status === "held") return null;           // nothing sent, or it needs him again
