@@ -110,7 +110,7 @@ function h(tag, attrs, ...kids) {
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else el.setAttribute(k, v === true ? "" : v);
   }
-  for (const kid of kids.flat()) { if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  for (const kid of kids.flat(Infinity)) { if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
   return el;
 }
 const app = $("#app");
@@ -261,7 +261,7 @@ function render() {
     h("div", { class: "inner" }, quiet.length ? byClient(quiet).map(([c, rs]) => [h("div", { class: "client", text: c }), rs.map((r) => line(r, false))]) : h("div", { class: "muted", text: "None." })));
   if (S.open) quietBox.open = true;
 
-  app.replaceChildren(
+  app.replaceChildren(...[
     laptop === "err" ? h("div", { class: "banner", text: "Your laptop hasn't sent an update for a while (it may be asleep or off). The list shows the last known state." }) : null,
     h("div", {}, search),
     h("section", {},
@@ -271,7 +271,7 @@ function render() {
     busy.length ? h("section", {}, h("h2", {}, "Working now", h("span", { class: "count grey", text: busy.length })), h("div", { class: "list" }, busy.map((r) => line(r, true)))) : null,
     h("section", {}, quietBox),
     h("div", { class: "foot muted" }, h("span", { text: "Updates by itself. Done hides a row until that session finishes its next turn." }),
-      h("button", { class: "link", text: "Sign out", onclick: () => sb.auth.signOut() })));
+      h("button", { class: "link", text: "Sign out", onclick: () => sb.auth.signOut() }))].flat(Infinity).filter(Boolean));
 }
 
 start();
