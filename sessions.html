@@ -177,6 +177,10 @@ body.wall-mode main { max-width: none; padding: 0; }
 .wbody .tbl { font-family: ui-monospace, Consolas, monospace; font-size: 12px; white-space: pre; overflow-x: auto; }
 .wbody b { color: #fff; }
 .wcard .reply { margin-top: 0; flex: 0 0 auto; }
+.wyou { flex: 0 0 auto; padding: 9px 13px; border-radius: 12px; background: rgba(127,209,218,.08); border: 1px solid rgba(127,209,218,.22); font-size: 14px; color: #d6eef1; cursor: pointer; }
+.wyou .lab2 { font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #7fd1da; margin-right: 8px; }
+.wyou .txt { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; margin-top: 3px; }
+.wyou.open .txt { display: block; max-height: 240px; overflow: auto; }
 .wcard .wfoot, .wcard .wtop, .wcard .wneed, .wcard .wtitle { flex: 0 0 auto; }
 .wnote { flex: 0 0 auto; font-size: 14px; color: #f5b450; font-weight: 600; }
 .wcard .reply textarea { height: 76px; min-height: 56px; max-height: 180px; }
@@ -489,6 +493,7 @@ function wallCard(r, i, n, isCur, size) {
     h("div", { class: "wneed" }, h("span", { class: "lab", text: r.state === "approval" ? (/^Answer its question/.test(r.needs) ? "It's asking you a question" : "Waiting for your permission")
         : replyPhase(r) === "answered" ? (r.needs ? "It answered your reply, and needs" : "It answered your reply") : "What it needs from you" }),
       ((t) => t.charAt(0).toUpperCase() + t.slice(1))(r.needs || (replyPhase(r) === "answered" ? firstSentence(r.recap) : ""))),
+    yourReply(r),
     h("div", { class: "wbody" }, body),
     !isCur ? null : r.state === "approval"
       ? h("div", { class: "wnote", text: /^Answer its question/.test(r.needs) ? "This question can only be answered inside the session. Open it, pick an answer, then come back." : "A permission can only be given inside the session. Open it, then come back." })
@@ -513,6 +518,15 @@ function onWall(r) {
   if (phase === "waiting") return false;
   if (phase === "answered") return !dismissed(r);
   return groupOf(r) === "needs";
+}
+function yourReply(r) {                          // Lee asked (24 Oct 2026) to see his own last message to the session on its card
+  const mine = S.replies.get(r.id);
+  let text = r.last_reply || "", at = r.last_reply_at;
+  if (mine && (!at || new Date(mine.created_at) > new Date(at))) { text = mine.message; at = mine.created_at; }   // sent from the board, not arrived yet
+  if (!text) return null;
+  const box = h("div", { class: "wyou", title: "Click to show it all", onclick: () => box.classList.toggle("open") },
+    h("span", { class: "lab2", text: "You said" }), h("span", { class: "ago", text: ago(at) }), h("div", { class: "txt", text }));
+  return box;
 }
 function wallList() {
   const all = [...S.rows.values()];
