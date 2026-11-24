@@ -175,7 +175,7 @@
     };
     const ok = h("button", { class: "dc-btn dc-ok", type: "button", onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Looks good");
     const cm = h("button", { class: "dc-btn dc-ghost", type: "button", onclick: (e) => send("comment", e.currentTarget) }, "Send comment");
-    wrap.append(noAsk ? null : h("p", { class: "dc-ask", text: "M7Alpha would like your answer on this." }), h("div", { class: "dc-row" }, ok), ta, h("div", { class: "dc-row" }, cm));
+    wrap.append(...(noAsk ? [] : [h("p", { class: "dc-ask", text: "M7Alpha would like your answer on this." })]), h("div", { class: "dc-row" }, ok), ta, h("div", { class: "dc-row" }, cm));
     return wrap;
   }
 
