@@ -236,3 +236,42 @@ body.night .dc-sent li.dc-empty { color: var(--ink-3, #7d8789); }
   html:not(.inlib) body:not(.embed) .s-body.pcard.bar .dc-wt .wt-sendrow,
   html:not(.inlib) body:not(.embed) .s-body.pcard.bar .dc-wt:not([data-question]) .wt-cmtsend { display: none; }
 }
+
+/* ===== ONE FRAME ON A LAPTOP (Lee, 24 Nov 2026: yes to removing the "double frame", as on the phone) =====
+   A document card and a walk-through card had an off-white card with its own line, corners and shadow, inside the card's
+   glass frame. Now the card's frame itself is the off-white surface (#FAF9F6) and the card inside it draws nothing of its
+   own: no line, no shadow, no separate background. The padding stays. Phones (900px and under) are not touched.
+   The walk-through's slides: the slide and what comes after it on the last slide (the question, the earlier answer) sit
+   together in the middle of a steady area, so short slides share their spare room above and below instead of leaving it
+   all under the words, and the arrows stay in one place from slide to slide. The steady area is an empty first child
+   (::before) spanning the rows from the top spacer to the bottom spacer: those rows together are at least --wt-area tall,
+   and the two 1fr spacers split what is left over. 274px = the old 260px slide area + the 14px gap above it. ===== */
+@media (min-width: 901px) {
+  html:not(.inlib) body:not(.embed) .story .s-card > .s-body.pcard,
+  html:not(.inlib) body.night:not(.embed) .story .s-card > .s-body.pcard { background: #FAF9F6; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-card,
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-card.dc-card-full,
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-card.dc-wt { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-card.dc-wt:focus-visible { box-shadow: none; outline: 3px solid var(--teal, #479aa4); outline-offset: 4px; border-radius: 6px; }
+
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-card.dc-wt { --wt-area: 274px; row-gap: 0;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto minmax(0, 1fr) auto auto auto auto auto; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt::before { content: ""; grid-row: 3 / 9; grid-column: 1; min-height: var(--wt-area); pointer-events: none; }
+  /* every part in the one column, on top of the empty steady area where they overlap it */
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > * { grid-column: 1; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-head { grid-row: 1; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-note { grid-row: 2; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-slide { grid-row: 4; min-height: 0; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-done { grid-row: 5; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-q { grid-row: 6; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-err { grid-row: 7; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-nav { grid-row: 9; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-acts { grid-row: 10; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-cmt { grid-row: 11; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .wt-links { grid-row: 12; }
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > .dc-ournote { grid-row: 13; }
+  /* the walk-through is the same height on every slide, so it can sit in the middle of the off-white frame without moving */
+  html:not(.inlib) body:not(.embed) .s-body.pcard .pcwrap:has(.dc-wt) { align-items: safe center; }
+  /* the 14px between parts, as margins: empty rows then add nothing */
+  html:not(.inlib) body:not(.embed) .s-body.pcard .dc-wt > * + * { margin-top: 14px; }
+}
