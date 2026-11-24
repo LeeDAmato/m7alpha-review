@@ -132,7 +132,7 @@ body.night .dc-sent li.dc-empty { color: var(--ink-3, #7d8789); }
 /* the document card fills the review card's frame (Lee, 24 Nov 2026); index.html caps panel slots at 720 px, lifted here for documents */
 .s-body.pcard .panelslot.dc-cardhost { width: 100%; }
 .s-body.pcard .pcwrap:has(.dc-cardhost) { align-items: flex-start; }
-.dc-card.dc-card-full { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 22px; padding: 14px; }
+.dc-card.dc-card-full { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 22px; padding: 14px; max-width: none; }
 .dc-cpages { display: grid; gap: 12px; min-width: 0; }
 .dc-cpage { width: 100%; height: auto; display: block; border-radius: 8px; border: 1px solid var(--line, #dfe6e6); background: #F4F1EC; cursor: zoom-in; }
 .dc-card-full .dc-cbody { position: sticky; top: 0; align-self: start; }
