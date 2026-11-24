@@ -1,6 +1,8 @@
 /* Client Studio: Tasks (builder 1, 24 Nov 2026; PANEL_CONTRACT_2026-11-24.md).
    - The Tasks page: a client with a personal link sees their own client's tasks, adds one, picks who it is for and the
-     due date, comments, and ticks their own tasks done. On the shared client link it shows one line instead.
+     due date, comments, and ticks their own tasks done. From setup_27 (Lee, 24 Nov 2026) the client's shared link does
+     the same, with the name typed once on the page (ctx.visitorName() / ctx.askName()); the one-line "personal link"
+     gate now shows only when there is no client code at all.
    - Our side of Tasks (signed-in editors): every task, our notes, who has a personal link, and "Put on their Review
      page" (ask_client), which only a signed-in editor can do.
    - Task cards on the Review page: what we need, the answer-by date, a reply box, the drop box button (only when the
@@ -49,9 +51,27 @@
     return r;
   }
   const say = (ctx, text) => { try { ctx.toast(text); } catch (e) {} };
+  const NAME_FIRST = "Please type your name first, so M7Alpha knows who it's from.";
   const sorry = (ctx, e) => say(ctx, e && e.code === "not_allowed"
     ? "This link no longer opens your tasks. Please ask M7Alpha for your link."
+    : e && e.code === "name" ? NAME_FIRST
     : "That didn't save. Please check your connection and try again.");
+  // setup_27 (Lee, 24 Nov 2026: "shared link is the same as personal link"): a personal link (ctx.token) or the
+  // client's shared link (ctx.code only) both open Tasks. Reads send p_token null on the shared link.
+  const canSee = (ctx) => !!(ctx.token || ctx.code);
+  const typedName = (ctx) => {
+    try { const n = typeof ctx.visitorName === "function" ? ctx.visitorName() : ctx.reviewerName; return String(n || "").trim(); } catch (e) { return ""; }
+  };
+  // Link arguments for a write. Personal link: exactly as before. Shared link: p_token null plus p_name, the name typed
+  // once on the page; if none yet the page is asked (ctx.askName()). Throws code "name" when there is still none.
+  async function writeArgs(ctx) {
+    if (ctx.token) return { p_token: ctx.token };
+    let n = typedName(ctx);
+    if (!n && typeof ctx.askName === "function") { try { n = String((await ctx.askName()) || "").trim(); } catch (e) { n = ""; } }
+    if (!n) { const e = new Error("name"); e.code = "name"; throw e; }
+    return { p_token: null, p_name: n };
+  }
+  async function write(ctx, fn, args) { return call(ctx, fn, Object.assign({ p_client_code: ctx.code }, args, await writeArgs(ctx))); }
   const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.4 3 3 6-6.4"/></svg>';
   const btn = (ctx, label, cls, onclick, extra = {}) => ctx.h("button", { type: "button", class: "tk-btn " + (cls || ""), onclick, ...extra }, label);
 
@@ -79,12 +99,12 @@
 
   // ---------- the client's Tasks page ----------
   async function loadClient(ctx) {
-    const r = await call(ctx, "studio_tasks", { p_token: ctx.token, p_client_code: ctx.code });
+    const r = await call(ctx, "studio_tasks", { p_token: ctx.token || null, p_client_code: ctx.code });
     st.tasks = r.tasks || []; st.people = r.people || []; st.err = null;
   }
   function renderClient(el, ctx) {
     const h = ctx.h;
-    if (!ctx.token) return needPerson(el, ctx);
+    if (!canSee(ctx)) return needPerson(el, ctx);
     if (!el.querySelector(".tk-page")) el.replaceChildren(h("div", { class: "tk-page" }, h("p", { class: "tk-hint", text: "Loading your tasks…" })));
     st.showDone = sget("done", false);
     loadClient(ctx).then(() => drawClient(el, ctx), (e) => {
@@ -146,7 +166,7 @@
       const body = ta.value.trim(); if (!body) { ta.focus(); return; }
       send.disabled = true;
       try {
-        const r = await call(ctx, "studio_task_comment", { p_token: ctx.token, p_client_code: ctx.code, p_job: t.id, p_body: body });
+        const r = await write(ctx, "studio_task_comment", { p_job: t.id, p_body: body });
         (t.comments ||= []).push(r.comment); sset("draft:" + t.id, null); say(ctx, "Sent. M7Alpha has your comment."); redraw();
       } catch (e) { send.disabled = false; sorry(ctx, e); }
     });
@@ -162,7 +182,7 @@
   async function setDone(t, done, el, ctx) {
     if (done && !(await ctx.confirm(`Mark “${t.title}” as done?`, "Yes, it's done"))) return;
     try {
-      const r = await call(ctx, "studio_task_done", { p_token: ctx.token, p_client_code: ctx.code, p_job: t.id, p_done: done });
+      const r = await write(ctx, "studio_task_done", { p_job: t.id, p_done: done });
       Object.assign(t, r.task); say(ctx, done ? "Marked as done. Thank you!" : "Marked as not done.");
       drawClient(el, ctx); try { ctx.refresh(); } catch (e) {}
     } catch (e) { sorry(ctx, e); }
@@ -180,11 +200,11 @@
       if (!title.value.trim()) { msg.textContent = "Please write the task."; title.focus(); return; }
       save.disabled = true; msg.textContent = "Saving…";
       try {
-        const r = await call(ctx, "studio_task_add", { p_token: ctx.token, p_client_code: ctx.code, p_title: title.value.trim(),
+        const r = await write(ctx, "studio_task_add", { p_title: title.value.trim(),
           p_notes: notes.value.trim() || null, p_for: who.value, p_due: due.value || null });
         if (!r.again) st.tasks.push(r.task);
         st.adding = false; say(ctx, "Added. M7Alpha can see it now."); drawClient(el, ctx);
-      } catch (e) { save.disabled = false; msg.textContent = e.code === "title" ? "Please write the task." : e.code === "date" ? "Please pick a date from today on." : "That didn't save. Please check your connection and try again."; }
+      } catch (e) { save.disabled = false; msg.textContent = e.code === "title" ? "Please write the task." : e.code === "date" ? "Please pick a date from today on." : e.code === "name" ? NAME_FIRST : "That didn't save. Please check your connection and try again."; }
     });
     title.addEventListener("keydown", (e) => { if (e.key === "Escape") { st.adding = false; drawClient(el, ctx); } });
     return h("div", { class: "tk-box tk-add" },
@@ -271,7 +291,7 @@
           h("span", { class: "tk-meta" },
             t.client_sees ? h("span", { class: "tk-tag sees", text: name + " sees it" }) : h("span", { class: "tk-tag ours", text: "Ours only" }),
             t.ask_client_at && !t.done_at ? h("span", { class: "tk-tag asked", text: "On their Review page" }) : null,
-            t.added_by && !TEAM_NAMES.includes(t.added_by) && t.added_by_person ? h("span", { class: "tk-small", text: "added by " + t.added_by }) : null,
+            t.added_by && !TEAM_NAMES.includes(t.added_by) && (t.added_by_person || t.added_via === "shared") ? h("span", { class: "tk-small", text: "added by " + t.added_by + (t.added_via === "shared" ? " (shared link)" : "") }) : null,
             (t.comments || []).length ? h("span", { class: "tk-c", text: t.comments.length + (t.comments.length === 1 ? " comment" : " comments") }) : null)),
         h("span", { class: "tk-ctl" }, who, due)));
     if (isOpen) {
@@ -295,7 +315,7 @@
         h("div", { class: "tk-ourbox" }, h("label", { class: "tk-lab" }, "Our notes (never shown to the client)", tnote)),
         h("div", { class: "tk-cs" }, (t.comments || []).map((c) => h("div", { class: "tk-cm" + (c.internal ? " int" : "") },
           h("i", { class: "tk-av" + (TEAM_NAMES.includes(c.author) ? "" : " cl"), text: initials(c.author) }),
-          h("div", {}, h("div", { class: "tk-cmh" }, h("b", { text: c.author }), h("small", { text: when(c.created_at) }), c.internal ? h("span", { class: "tk-tag ours", text: "Team only" }) : null), h("p", { text: c.body }))))),
+          h("div", {}, h("div", { class: "tk-cmh" }, h("b", { text: c.author }), h("small", { text: when(c.created_at) }), c.internal ? h("span", { class: "tk-tag ours", text: "Team only" }) : null, c.via === "shared" ? h("span", { class: "tk-small", text: "shared link" }) : null), h("p", { text: c.body }))))),
         cbox, h("div", { class: "tk-row" }, send, h("label", { class: "tk-check" }, teamOnly, " Team only"))));
     } else if (askBtn) row.querySelector(".tk-meta").after(h("span", { class: "tk-askrow" }, askBtn));
     return row;
@@ -303,8 +323,8 @@
 
   // ---------- task cards on the Review page ----------
   async function loadCards(ctx) {
-    if (!ctx.token) return [];
-    try { const r = await call(ctx, "get_task_cards", { p_token: ctx.token, p_client_code: ctx.code }); return r.cards || []; }
+    if (!canSee(ctx)) return [];   // shared link too (setup_27)
+    try { const r = await call(ctx, "get_task_cards", { p_token: ctx.token || null, p_client_code: ctx.code }); return r.cards || []; }
     catch (e) { return []; }
   }
   function renderCard(card, el, ctx) {
@@ -322,7 +342,7 @@
       const body = ta.value.trim(); if (!body) { ta.focus(); return; }
       reply.disabled = true; msg.textContent = "Sending…";
       try {
-        const r = await call(ctx, "studio_task_comment", { p_token: ctx.token, p_client_code: ctx.code, p_job: card.id, p_body: body });
+        const r = await write(ctx, "studio_task_comment", { p_job: card.id, p_body: body });
         (t.comments ||= []).push(r.comment); ta.value = ""; sset("draft:" + card.id, null); drawComments();
         msg.textContent = "Sent. M7Alpha has your reply."; reply.disabled = false;
       } catch (e) { reply.disabled = false; msg.textContent = ""; sorry(ctx, e); }
@@ -332,8 +352,8 @@
       done.disabled = true;
       try {
         const extra = ta.value.trim();
-        if (extra) { await call(ctx, "studio_task_comment", { p_token: ctx.token, p_client_code: ctx.code, p_job: card.id, p_body: extra }); sset("draft:" + card.id, null); }
-        await call(ctx, "studio_task_done", { p_token: ctx.token, p_client_code: ctx.code, p_job: card.id, p_done: true });
+        if (extra) { await write(ctx, "studio_task_comment", { p_job: card.id, p_body: extra }); sset("draft:" + card.id, null); }
+        await write(ctx, "studio_task_done", { p_job: card.id, p_done: true });
         say(ctx, "Done. Thank you!"); try { ctx.refresh(); } catch (e) {}
       } catch (e) { done.disabled = false; sorry(ctx, e); }
     });
@@ -363,7 +383,7 @@
   (window.StudioPanelsQueue ||= []).push({
     name: "tasks",
     type: "Tasks",
-    page: { label: "Tasks", needsPerson: true, render: renderPage },
+    page: { label: "Tasks", needsPerson: false, render: renderPage },   // setup_27: the shared link sees Tasks too
     load: loadCards,
     render: renderCard,
   });

@@ -1,6 +1,9 @@
 /* Client Studio: Documents page, document cards on the Review page, and the drop box (builder 2, 24 Nov 2026).
    Plugs in through window.StudioPanelsQueue (PANEL_CONTRACT_2026-11-24.md, section 4). Needs setup_25.
-   One global only: window.M7Docs. CSS classes start with dc-. Saved on the device only under m7r-dc:. */
+   One global only: window.M7Docs. CSS classes start with dc-. Saved on the device only under m7r-dc:.
+   24 Nov 2026 (setup_27, Lee: "shared link is the same as personal link"): with no personal link, everything here works
+   on the client's shared link (ctx.code) too. Reads send p_token null; writes also send p_name, the name typed once on
+   the page (ctx.visitorName(); ctx.askName() is called when a write needs one and none is typed yet). */
 (function () {
   "use strict";
   if (window.M7Docs) return;
@@ -34,13 +37,43 @@
   };
   const icon = (ctx, name, cls) => ctx.h("span", { class: "dc-ic" + (cls ? " " + cls : ""), html: ICON[name] });
   const fileUrl = (ctx, d, download) => ctx.mediaUrl(d.file_path) + (download ? "?download=" + encodeURIComponent(d.file_name || "document.pdf") : "");
-  const isVisitor = (ctx) => !!ctx.token && !ctx.team;
+  // A visitor: a personal link (ctx.token) or, from setup_27 (Lee, 24 Nov 2026), the client's shared link (ctx.code only).
+  const isVisitor = (ctx) => !ctx.team && !!(ctx.token || ctx.code);
   const busy = (btn, on) => { if (!btn) return; btn.disabled = on; btn.classList.toggle("dc-busy", on); };
+  // the name typed once on the page (shared link only); the page gives it through ctx.visitorName()
+  const typedName = (ctx) => {
+    try { const n = typeof ctx.visitorName === "function" ? ctx.visitorName() : ctx.reviewerName; return String(n || "").trim(); } catch (e) { return ""; }
+  };
+  // Link arguments for a write. Personal link: exactly as before. Shared link: p_token null plus the typed name; when
+  // none is typed yet and the call needs one, the page is asked (ctx.askName()). Null = no name, don't send.
+  async function writeArgs(ctx, needName) {
+    if (ctx.token) return { p_token: ctx.token };
+    let n = typedName(ctx);
+    if (!n && needName && typeof ctx.askName === "function") { try { n = String((await ctx.askName()) || "").trim(); } catch (e) { n = ""; } }
+    if (!n && needName) return null;
+    return n ? { p_token: null, p_name: n } : { p_token: null };
+  }
+  const NAME_FIRST = "Please type your name first, so M7Alpha knows who it's from.";
 
   async function call(ctx, fn, args) {
     const r = await ctx.rpc(fn, args);
     if (r && r.error) throw new Error(r.error);
     return r;
+  }
+  // open or download: recorded for us; on the shared link with the typed name if there is one (never asks)
+  async function recordOpen(ctx, doc, how) {
+    const a = await writeArgs(ctx, false);
+    return ctx.rpc("open_document", Object.assign({ p_client_code: ctx.code, p_doc: doc.id, p_how: how }, a));
+  }
+  // Part 29 (Lee, 24 Nov 2026): "Download the full version (PDF)", only when the document has one. The first download
+  // by each person or typed name is recorded for us (open_document with p_how 'full_download').
+  function fullLink(ctx, doc) {
+    const f = doc && doc.full;
+    if (!f || !f.file_path) return null;
+    return ctx.h("a", { class: "dc-full", href: ctx.mediaUrl(f.file_path) + "?download=" + encodeURIComponent(f.file_name || "full-version.pdf"),
+      download: f.file_name || "full-version.pdf",
+      onclick: () => { if (isVisitor(ctx)) recordOpen(ctx, doc, "full_download").catch(() => {}); } },
+      icon(ctx, "down"), "Download the full version (PDF)" + (f.size ? " · " + mb(f.size) : ""));
   }
   function locked(ctx, el) {
     el.replaceChildren(ctx.h("p", { class: "dc-locked", text: LOCKED }));
@@ -64,7 +97,7 @@
     const setZoom = (z) => { zoom = Math.min(3, Math.max(1, Math.round(z * 4) / 4)); sheet.style.setProperty("--dc-zoom", zoom); store.set("zoom", zoom); zl.textContent = Math.round(zoom * 100) + "%"; };
     const zl = h("span", { class: "dc-zl" });
     const dl = h("a", { class: "dc-btn dc-ghost", href: fileUrl(ctx, doc, true), download: doc.file_name || "document.pdf",
-      onclick: () => { if (isVisitor(ctx)) ctx.rpc("open_document", { p_token: ctx.token, p_client_code: ctx.code, p_doc: doc.id, p_how: "download" }).catch(() => {}); } },
+      onclick: () => { if (isVisitor(ctx)) recordOpen(ctx, doc, "download").catch(() => {}); } },
       icon(ctx, "down"), h("span", { class: "dc-lbl" }, "Download"));
     const bar = h("div", { class: "dc-rbar" },
       h("div", { class: "dc-rtitle" }, h("b", { text: doc.title }), counter),
@@ -75,7 +108,9 @@
         dl,
         h("button", { class: "dc-round dc-close", type: "button", "aria-label": "Close", onclick: () => close() }, icon(ctx, "x"))));
     const foot = doc.ask === "answer" && doc.waiting && isVisitor(ctx) ? answerBox(doc, ctx, () => close()) : null;
-    const box = h("div", { class: "dc-reader", role: "dialog", "aria-modal": "true", "aria-label": doc.title }, bar, body, foot ? h("div", { class: "dc-rfoot" }, foot) : null);
+    const full = fullLink(ctx, doc);
+    const box = h("div", { class: "dc-reader", role: "dialog", "aria-modal": "true", "aria-label": doc.title }, bar,
+      full ? h("div", { class: "dc-rfull" }, full) : null, body, foot ? h("div", { class: "dc-rfoot" }, foot) : null);
     document.body.append(box);
     document.documentElement.classList.add("dc-noscroll");
     setZoom(zoom);
@@ -113,32 +148,34 @@
 
     // first-opened time, for us only (nothing comes back to the page about it)
     if (isVisitor(ctx)) {
-      ctx.rpc("open_document", { p_token: ctx.token, p_client_code: ctx.code, p_doc: doc.id, p_how: "open" })
+      recordOpen(ctx, doc, "open")
         .then((r) => { if (r && r.ok && opts.onOpened) opts.onOpened(r); }).catch(() => {});
     }
     return openReader;
   }
 
   // "Looks good" or a comment, for a document Lee asked them to answer
-  function answerBox(doc, ctx, done) {
+  function answerBox(doc, ctx, done, noAsk) {     // noAsk: the card already says it above (Lee, 24 Nov 2026: shown twice)
     const h = ctx.h;
     const ta = h("textarea", { class: "dc-ta", rows: "3", maxlength: "4000", placeholder: "Your comment (what to change, a question...)", "aria-label": "Your comment" });
     const wrap = h("div", { class: "dc-answer" });
     const send = async (decision, btn) => {
       const comment = ta.value.trim();
       if (decision === "comment" && !comment) { ta.focus(); ctx.toast("Write your comment first."); return; }
+      const link = await writeArgs(ctx, true);
+      if (!link) { ctx.toast(NAME_FIRST); return; }
       busy(btn, true);
       try {
-        await call(ctx, "answer_document", { p_token: ctx.token, p_client_code: ctx.code, p_doc: doc.id, p_decision: decision, p_comment: comment || null });
+        await call(ctx, "answer_document", Object.assign({ p_client_code: ctx.code, p_doc: doc.id, p_decision: decision, p_comment: comment || null }, link));
         wrap.replaceChildren(h("p", { class: "dc-thanks" }, icon(ctx, "ok"), decision === "approve" ? " Thanks. We've noted it looks good." : " Thanks. Your comment is with M7Alpha."));
         ctx.toast("Sent to M7Alpha");
         ctx.refresh && ctx.refresh();
         done && setTimeout(done, 900);
-      } catch (e) { busy(btn, false); ctx.toast("That didn't send. Please try again."); }
+      } catch (e) { busy(btn, false); ctx.toast(e.message === "name" ? NAME_FIRST : "That didn't send. Please try again."); }
     };
     const ok = h("button", { class: "dc-btn dc-ok", type: "button", onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Looks good");
     const cm = h("button", { class: "dc-btn dc-ghost", type: "button", onclick: (e) => send("comment", e.currentTarget) }, "Send comment");
-    wrap.append(h("p", { class: "dc-ask", text: "M7Alpha would like your answer on this." }), h("div", { class: "dc-row" }, ok), ta, h("div", { class: "dc-row" }, cm));
+    wrap.append(noAsk ? null : h("p", { class: "dc-ask", text: "M7Alpha would like your answer on this." }), h("div", { class: "dc-row" }, ok), ta, h("div", { class: "dc-row" }, cm));
     return wrap;
   }
 
@@ -168,22 +205,24 @@
     });
   }
   const UPLOAD_ERR = { too_big: "This file is over 500 MB. Please ask us for another way to send it.", file_type: "We can't take this kind of file.",
-    too_many: "Too many files sent today. Please try again tomorrow.", empty: "This file is empty.", not_allowed: LOCKED };
+    too_many: "Too many files sent today. Please try again tomorrow.", empty: "This file is empty.", not_allowed: LOCKED, name: NAME_FIRST };
 
   async function sendFiles(ctx, files, list, jobId, after) {
     const h = ctx.h;
+    const link = await writeArgs(ctx, true);
     for (const f of files) {
       const bar = h("i", { class: "dc-prog" });
       const st = h("span", { class: "dc-st", text: "Waiting" });
       const row = h("li", { class: "dc-up" }, h("span", { class: "dc-fn", text: f.name }), h("span", { class: "dc-sz", text: mb(f.size) }), st, h("span", { class: "dc-track" }, bar));
       list.prepend(row);
+      if (!link) { row.classList.add("dc-bad"); st.textContent = NAME_FIRST; continue; }
       try {
-        const slot = await ctx.rpc("start_upload", { p_token: ctx.token, p_client_code: ctx.code, p_file_name: f.name, p_size: f.size, p_job: jobId || null });
+        const slot = await ctx.rpc("start_upload", Object.assign({ p_client_code: ctx.code, p_file_name: f.name, p_size: f.size, p_job: jobId || null }, link));
         if (!slot || slot.error) { row.classList.add("dc-bad"); st.textContent = UPLOAD_ERR[slot && slot.error] || "This file didn't go. Please try again."; continue; }
         st.textContent = "Sending";
         await putFile(ctx, slot, f, (p) => { bar.style.width = Math.round(p * 100) + "%"; st.textContent = `Sending ${Math.round(p * 100)}%`; });
         bar.style.width = "100%";
-        const fin = await ctx.rpc("finish_upload", { p_token: ctx.token, p_client_code: ctx.code, p_upload: slot.upload_id });
+        const fin = await ctx.rpc("finish_upload", { p_token: ctx.token || null, p_client_code: ctx.code, p_upload: slot.upload_id });
         if (fin && fin.error) throw new Error(fin.error);
         row.classList.add("dc-done"); st.replaceChildren(icon(ctx, "ok"), " Sent to M7Alpha");
       } catch (e) {
@@ -228,8 +267,9 @@
         h("div", { class: "dc-row" },
           h("button", { class: "dc-btn dc-main", type: "button", onclick: open }, "Read"),
           h("a", { class: "dc-btn dc-ghost", href: fileUrl(ctx, doc, true), download: doc.file_name || "document.pdf",
-            onclick: () => ctx.rpc("open_document", { p_token: ctx.token, p_client_code: ctx.code, p_doc: doc.id, p_how: "download" }).catch(() => {}) },
-            icon(ctx, "down"), "Download"))));
+            onclick: () => { recordOpen(ctx, doc, "download").catch(() => {}); } },
+            icon(ctx, "down"), "Download")),
+        fullLink(ctx, doc) ? h("p", { class: "dc-fullrow" }, fullLink(ctx, doc)) : null));
   }
 
   async function renderClientPage(el, ctx) {
@@ -238,7 +278,7 @@
     const sent = h("ul", { class: "dc-sent" });
     const loadSent = async () => {
       try {
-        const r = await call(ctx, "get_uploads", { p_token: ctx.token, p_client_code: ctx.code, p_job: null });
+        const r = await call(ctx, "get_uploads", { p_token: ctx.token || null, p_client_code: ctx.code, p_job: null });
         sent.replaceChildren(...(r.uploads || []).slice(0, 12).map((u) => h("li", {},
           h("span", { class: "dc-fn", text: u.file_name }), h("span", { class: "dc-sz", text: [mb(u.size), u.name, day(u.sent_at)].filter(Boolean).join(" · ") }))));
         sentHead.hidden = !(r.uploads || []).length;
@@ -247,7 +287,7 @@
     const sentHead = h("h3", { class: "dc-h3", text: "Sent so far", hidden: true });
     const load = async () => {
       try {
-        const r = await call(ctx, "get_documents", { p_token: ctx.token, p_client_code: ctx.code });
+        const r = await call(ctx, "get_documents", { p_token: ctx.token || null, p_client_code: ctx.code });
         const docs = r.documents || [];
         list.replaceChildren(...(docs.length ? docs.map((d) => docTile(d, ctx, load))
           : [h("p", { class: "dc-empty", text: "Nothing here yet. When M7Alpha sends you a proposal, plan, guide or report, it shows here." })]));
@@ -289,7 +329,7 @@
         act(btn, [["document_set_ask", { p_id: d.id, p_ask: mode }], ["ask_client", { p_kind: "document", p_id: d.id, p_answer_by: date.value || null }]], "Card is on their Review page");
       };
       const opens = (d.opens || []).map((o) => h("li", {}, `${o.name || "Someone"}: first opened ${when(o.first_opened_at)}` + (o.open_count > 1 ? `, ${o.open_count} times` : "") + (o.downloaded_at ? ", downloaded" : "")));
-      const answers = (d.answers || []).map((a) => h("li", {}, `${a.name}: ${a.decision === "approve" ? "Looks good" : "Comment"}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`));
+      const answers = (d.answers || []).map((a) => h("li", {}, `${a.name}${a.shared ? " (shared link)" : ""}:${a.decision === "approve" ? "Looks good" : "Comment"}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`));
       return h("article", { class: "dc-doc dc-team" },
         h("button", { class: "dc-thumb", type: "button", "aria-label": "Read " + d.title, onclick: () => reader(d, ctx) },
           d.thumb ? h("img", { src: ctx.mediaUrl(d.thumb), alt: "", loading: "lazy" }) : icon(ctx, "doc")),
@@ -300,6 +340,11 @@
           h("p", { class: "dc-state", text: state + (d.ask_client_at ? ` (asked ${when(d.ask_client_at)}${d.answer_by_set ? ", answer by " + day(d.answer_by_set + "T12:00:00") : ""})` : "") }),
           opens.length ? h("ul", { class: "dc-opens", "aria-label": "Opened by" }, opens) : h("p", { class: "dc-date", text: d.shared_at ? "Not opened yet." : "" }),
           answers.length ? h("ul", { class: "dc-opens", "aria-label": "Answers" }, answers) : null,
+          d.full ? h("p", { class: "dc-fullrow" }, fullLink(ctx, d)) : h("p", { class: "dc-date", text: "No full version. A session adds one with panel_docs_admin.py doc-full." }),
+          d.full ? ((d.full_downloads || []).length
+            ? h("ul", { class: "dc-opens", "aria-label": "Full version downloaded by" }, d.full_downloads.map((f) => h("li", {},
+                `${f.name}: first downloaded the full version ${when(f.first_at)}` + (f.count > 1 ? `, ${f.count} times` : ""))))
+            : h("p", { class: "dc-date", text: "Full version not downloaded yet." })) : null,
           h("p", { class: "dc-ournote", text: "Only M7Alpha sees who opened it and when." }),
           h("div", { class: "dc-row dc-wrap" },
             !d.shared_at || d.hidden_at
@@ -320,7 +365,7 @@
       try {
         const u = await call(ctx, "get_uploads", { p_token: null, p_client_code: ctx.code, p_job: null });
         ups.replaceChildren(...((u.uploads || []).length ? u.uploads.map((x) => h("li", {}, h("span", { class: "dc-fn", text: x.file_name }),
-          h("span", { class: "dc-sz", text: [mb(x.size), x.name, when(x.sent_at), x.status === "filed" ? "in Dropbox" : "waiting to go to Dropbox"].filter(Boolean).join(" · ") })))
+          h("span", { class: "dc-sz", text: [mb(x.size), x.name + (x.shared ? " (shared link)" : ""), when(x.sent_at), x.status === "filed" ? "in Dropbox" : "waiting to go to Dropbox"].filter(Boolean).join(" · ") })))
           : [h("li", { class: "dc-empty", text: "Nothing sent in the last 60 days." })]));
       } catch (e) {}
     }
@@ -334,7 +379,7 @@
 
   // ---------- document cards on the Review page ----------
   async function loadCards(ctx) {
-    if (!ctx.token && !ctx.team) return [];
+    if (!ctx.token && !ctx.code && !ctx.team) return [];   // shared link too (setup_27)
     try {
       const r = await ctx.rpc("get_document_cards", { p_token: ctx.token || null, p_client_code: ctx.code });
       return r && !r.error ? (r.cards || []) : [];
@@ -356,14 +401,15 @@
         card.note ? h("p", { class: "dc-note" }, h("b", { text: "From M7Alpha: " }), card.note) : null,
         h("p", { class: "dc-due" + (card.answer_by && new Date(card.answer_by + "T23:59:59") < new Date() ? " dc-late" : ""),
           text: dueLine(ctx, doc) }),
+        fullLink(ctx, doc) ? h("p", { class: "dc-fullrow" }, fullLink(ctx, doc)) : null,
         ctx.team ? h("p", { class: "dc-ournote", text: (doc.opens || []).length ? (doc.opens || []).map((o) => `${o.name}: first opened ${when(o.first_opened_at)}`).join(" · ") : "Not opened yet (only we see this)." }) : null,
         h("div", { class: "dc-row" }, h("button", { class: "dc-btn dc-main", type: "button", onclick: open }, "Open")),
-        doc.ask === "answer" && isVisitor(ctx) ? answerBox(doc, ctx) : (doc.ask === "read" && isVisitor(ctx) ? h("p", { class: "dc-hint", text: "This card goes once you've opened it." }) : null))));
+        doc.ask === "answer" && isVisitor(ctx) ? answerBox(doc, ctx, null, true) : (doc.ask === "read" && isVisitor(ctx) ? h("p", { class: "dc-hint", text: "This card goes once you've opened it." }) : null))));
   }
 
   // ---------- the attach button builder 1's task card asks for ----------
   function dropButton(ctx, opts) {
-    if (!ctx || !ctx.token || ctx.team) return null;    // personal link only
+    if (!ctx || ctx.team || !(ctx.token || ctx.code)) return null;    // personal or shared link (setup_27)
     return dropZone(ctx, { small: true, jobId: opts && opts.jobId, label: "Attach files", after: opts && opts.after });
   }
 
@@ -374,11 +420,11 @@
     type: "Documents",
     page: {
       label: "Documents",
-      needsPerson: true,
+      needsPerson: false,           // setup_27: the shared client link sees Documents too (Lee, 24 Nov 2026)
       render(el, ctx) {
         el.classList.add("dc-pagehost");
         if (ctx.team) return renderTeamPage(el, ctx);
-        if (!ctx.token) return locked(ctx, el);
+        if (!ctx.token && !ctx.code) return locked(ctx, el);
         return renderClientPage(el, ctx);
       },
     },

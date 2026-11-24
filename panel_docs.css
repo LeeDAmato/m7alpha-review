@@ -122,3 +122,9 @@ html.dc-noscroll, html.dc-noscroll body { overflow: hidden; }
 body.night .dc-h2, body.night .dc-lede, body.night .dc-h3, body.night .dc-empty, body.night .dc-wait { color: #F4F1EC; }
 body.night .dc-doc, body.night .dc-card { box-shadow: none; }
 body.night .dc-sent li.dc-empty { color: var(--ink-3, #7d8789); }
+
+/* Part 29 (24 Nov 2026): the full version download link (only when a document has one) */
+.dc-full { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; color: var(--teal-d, #0b5454); text-decoration: underline; text-underline-offset: 3px; word-break: break-word; }
+.dc-full .dc-ic { width: 18px; height: 18px; flex: none; }
+.dc-fullrow { margin: 2px 0 0; }
+.dc-rfull { flex: none; padding: 8px 14px; background: #F4F1EC; border-bottom: 1px solid var(--line, #dde3e3); text-align: center; }
