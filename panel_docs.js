@@ -392,9 +392,16 @@
     const open = () => reader(doc, ctx, { onOpened: () => { if (doc.ask === "read") ctx.refresh && ctx.refresh(); } });
     const pc = doc.page_count || (doc.pages || []).length;
     el.classList.add("dc-cardhost");
-    el.replaceChildren(h("div", { class: "dc-card" },
-      h("button", { class: "dc-cthumb", type: "button", "aria-label": "Open " + card.title, onclick: open },
-        doc.thumb ? h("img", { src: ctx.mediaUrl(doc.thumb), alt: "", loading: "lazy", decoding: "async" }) : icon(ctx, "doc")),
+    // The document fills the card like a post's picture does (Lee, 24 Nov 2026: "leaving a lot of empty space instead of
+    // filling the frame"): every page at full width, running down the card's own scrolling frame; the words and buttons
+    // sit beside it on a laptop and under it on a phone. A tap on a page opens the full-screen reader.
+    const pg = doc.pages || [];
+    el.replaceChildren(h("div", { class: "dc-card dc-card-full" },
+      h("div", { class: "dc-cpages", role: "group", "aria-label": "Pages of " + card.title },
+        ...(pg.length ? pg.map((p, i) => h("img", { class: "dc-cpage", src: ctx.mediaUrl(p.path), alt: `Page ${i + 1} of ${pg.length}`, width: p.w, height: p.h,
+              loading: i < 2 ? "eager" : "lazy", decoding: "async", onclick: open }))
+          : [h("button", { class: "dc-cthumb", type: "button", "aria-label": "Open " + card.title, onclick: open },
+              doc.thumb ? h("img", { src: ctx.mediaUrl(doc.thumb), alt: "" }) : icon(ctx, "doc"))])),
       h("div", { class: "dc-cbody" },
         h("span", { class: "dc-kind", text: "Document · " + (KIND[doc.kind] || "Document") + (pc ? ` · ${pc} page${pc === 1 ? "" : "s"}` : "") }),
         h("h3", { class: "dc-title", text: card.title }),
@@ -403,7 +410,7 @@
           text: dueLine(ctx, doc) }),
         fullLink(ctx, doc) ? h("p", { class: "dc-fullrow" }, fullLink(ctx, doc)) : null,
         ctx.team ? h("p", { class: "dc-ournote", text: (doc.opens || []).length ? (doc.opens || []).map((o) => `${o.name}: first opened ${when(o.first_opened_at)}`).join(" · ") : "Not opened yet (only we see this)." }) : null,
-        h("div", { class: "dc-row" }, h("button", { class: "dc-btn dc-main", type: "button", onclick: open }, "Open")),
+        h("div", { class: "dc-row" }, h("button", { class: "dc-btn dc-main", type: "button", onclick: open }, "Open full screen")),
         doc.ask === "answer" && isVisitor(ctx) ? answerBox(doc, ctx, null, true) : (doc.ask === "read" && isVisitor(ctx) ? h("p", { class: "dc-hint", text: "This card goes once you've opened it." }) : null))));
   }
 
