@@ -107,7 +107,7 @@
         h("button", { class: "dc-round", type: "button", "aria-label": "Bigger", onclick: () => setZoom(zoom + 0.25) }, icon(ctx, "plus")),
         dl,
         h("button", { class: "dc-round dc-close", type: "button", "aria-label": "Close", onclick: () => close() }, icon(ctx, "x"))));
-    const foot = doc.ask === "answer" && doc.waiting && isVisitor(ctx) ? answerBox(doc, ctx, () => close()) : null;
+    const foot = !opts.noFoot && !hasWalk(doc) && doc.ask === "answer" && doc.waiting && isVisitor(ctx) ? answerBox(doc, ctx, () => close()) : null;    // a walk-through answers on its own card (part 30)
     const full = fullLink(ctx, doc);
     const box = h("div", { class: "dc-reader", role: "dialog", "aria-modal": "true", "aria-label": doc.title }, bar,
       full ? h("div", { class: "dc-rfull" }, full) : null, body, foot ? h("div", { class: "dc-rfoot" }, foot) : null);
@@ -386,9 +386,168 @@
     } catch (e) { return []; }
   }
 
+  // ---------- part 30 (24 Nov 2026): the walk-through card ----------
+  // Kurt's document cards as a short run of slides in the studio's own look, ending with the question (PAGE_SPEC.md in
+  // walkthroughs\). The words are shown exactly as stored. State (slide on screen, the picked answer, which comment box)
+  // is kept by document id, so the deck can redraw the card at any time; drafts are kept on the device (m7r-dc:wt:<id>).
+  const WT = new Map();
+  const WT_ERR = { empty_box: "Please write what you'd like changed", empty: "Write a comment first", name: NAME_FIRST, no_pick: "Please pick an answer first." };
+  const wtErr = (code) => WT_ERR[code] || "This couldn't be sent. Please try again.";
+  const hasWalk = (doc) => !!(doc && doc.walkthrough && Array.isArray(doc.walkthrough.slides) && doc.walkthrough.slides.length);
+  const wtDraft = (id) => Object.assign({ slides: {}, all: "", box: "" }, store.get("wt:" + id, {}));
+  const wtSave = (id, d) => store.set("wt:" + id, d);
+  const wtNoted = (d, total) => { const out = []; for (let k = 1; k <= total; k++) if (String(d.slides[k] || "").trim()) out.push(k); return out; };
+
+  function renderWalk(card, doc, el, ctx) {
+    const h = ctx.h, W = doc.walkthrough, slides = W.slides, total = slides.length, q = W.question && W.question.text ? W.question : null;
+    const visitor = isVisitor(ctx);
+    const st = WT.get(doc.id) || { n: 1, choice: null, all: false, open: false, err: "", sent: null };
+    WT.set(doc.id, st);
+    st.n = Math.min(Math.max(1, st.n || 1), total);
+    el.classList.add("dc-cardhost");
+    const open = () => reader(doc, ctx, { noFoot: true });
+    const tell = () => el.dispatchEvent(new CustomEvent("dc-slide", { bubbles: true, detail: { n: st.n, total, noted: wtNoted(wtDraft(doc.id), total), last: st.n === total, question: !!q } }));
+    const go = (n) => { n = Math.min(Math.max(1, n), total); if (n === st.n) return; st.n = n; st.err = ""; draw(); tell(); };
+    const point = (p) => (p && typeof p === "object" ? h("li", {}, h("b", { text: p.lead || "" }), " " + (p.text || "")) : h("li", { text: String(p) }));
+    const mineLast = () => (doc.answers || []).filter((a) => a.mine).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
+
+    async function send(decision, btn) {
+      const d = wtDraft(doc.id), slideC = {};
+      Object.keys(d.slides).forEach((k) => { const t = String(d.slides[k] || "").trim(); if (t && +k >= 1 && +k <= total) slideC[k] = t; });
+      const comment = String(d.all || "").trim();
+      const ch = decision === "choice" ? (q.choices || []).find((c) => c.label === st.choice) : null;
+      const fail = (code) => { st.err = wtErr(code); draw(); ctx.toast(st.err); };
+      if (decision === "choice" && !ch) { st.n = total; return fail("no_pick"); }
+      if (ch && ch.opens_box && !String(d.box || "").trim()) { st.n = total; st.err = WT_ERR.empty_box; draw(); ctx.toast(st.err); el.querySelector(".wt-box")?.focus(); return; }
+      if (decision === "comment" && !comment && !Object.keys(slideC).length) { st.open = true; st.err = WT_ERR.empty; draw(); ctx.toast(st.err); el.querySelector(".wt-ta")?.focus(); return; }
+      const link = await writeArgs(ctx, true);
+      if (!link) { st.err = NAME_FIRST; draw(); ctx.toast(NAME_FIRST); return; }
+      busy(btn, true);
+      try {
+        const args = Object.assign({ p_client_code: ctx.code, p_doc: doc.id, p_decision: decision, p_comment: comment || null,
+          p_choice: ch ? ch.label : null, p_box: ch && ch.opens_box ? String(d.box).trim() : null,
+          p_slide_comments: Object.keys(slideC).length ? slideC : null }, link);
+        if (!("p_name" in args)) args.p_name = null;
+        const r = await ctx.rpc("answer_walkthrough", args);
+        if (!r || r.error) throw new Error((r && r.error) || "failed");
+        st.sent = { decision, choice: ch ? ch.label : null, box: args.p_box, comment: comment || null, slides: args.p_slide_comments, at: new Date().toISOString() };
+        st.err = ""; st.choice = null; st.open = false; st.all = false; st.n = total;
+        wtSave(doc.id, { slides: {}, all: "", box: "" });
+        draw(); tell();
+        ctx.toast("Sent to M7Alpha");
+        setTimeout(() => { ctx.refresh && ctx.refresh(); }, 1600);
+      } catch (e) { busy(btn, false); fail(String(e.message)); }
+    }
+
+    function draw() {
+      const d = wtDraft(doc.id), s = slides[st.n - 1] || {}, last = st.n === total, noted = wtNoted(d, total);
+      const figs = (s.figures || []).slice(0, 3), pts = (s.points || []).slice(0, 6);
+      const slide = h("div", { class: "wt-slide" + (last && (q || st.sent || mineLast()) ? " wt-endslide" : ""), "aria-live": "polite", "aria-label": `Slide ${st.n} of ${total}` },
+        ...(s.kicker ? [h("p", { class: "wt-kicker", text: s.kicker })] : []),
+        h("h3", { class: "wt-title", text: s.title || "" }),
+        ...(figs.length ? [h("div", { class: "wt-figs" + (figs.length === 1 ? " wt-one" : "") }, ...figs.map((f) => h("div", { class: "wt-fig" }, h("b", { text: f.value || "" }), h("span", { text: f.label || "" }))))] : []),
+        ...(s.body ? [h("p", { class: "wt-body", text: s.body })] : []),
+        ...(pts.length ? [h(s.numbered ? "ol" : "ul", { class: "wt-points" + (s.numbered ? " wt-num" : "") }, ...pts.map(point))] : []),
+        ...(s.after ? [h("p", { class: "wt-after", text: s.after })] : []));
+      // the end of the run: the question (or Looks good on a report), and what they chose last time
+      const end = [];
+      const prev = st.sent || mineLast();
+      if (last && prev && visitor) {
+        const said = prev.choice ? `You chose: ${prev.choice}` : prev.decision === "approve" ? "You said: Looks good" : "You sent a comment";
+        const words = [prev.box, prev.comment].filter((x) => x && String(x).trim());
+        end.push(h("div", { class: "wt-done", role: "status" }, h("p", { class: "wt-said" }, icon(ctx, "ok"), " " + said),
+          ...words.map((w) => h("p", { class: "wt-words", text: w })),
+          h("p", { class: "wt-when", text: when(prev.at || prev.created_at) + (q ? " · You can answer again. The newest answer counts." : "") })));
+      }
+      if (last && q) {
+        const ch = (q.choices || []).find((c) => c.label === st.choice) || null;
+        const qbox = [h("p", { class: "wt-qtext", text: q.text })];
+        if (visitor) {
+          qbox.push(h("div", { class: "wt-choices", role: "group", "aria-label": q.text },
+            ...(q.choices || []).map((c) => h("button", { type: "button", class: "wt-choice", "data-choice": c.label, "aria-pressed": String(c.label === st.choice),
+              onclick: (e) => {
+                // Lee, 24 Nov 2026: "do we really need four different answers?" A choice without a box sends at once (no
+                // separate Send); a choice with a box opens it, and Send appears under it
+                if (!c.opens_box) { st.choice = c.label; st.err = ""; return send("choice", e.currentTarget); }
+                st.choice = c.label === st.choice ? null : c.label; st.err = ""; draw(); tell(); if (st.choice) el.querySelector(".wt-box")?.focus(); } }, c.label))));
+          if (ch && ch.opens_box) {
+            const box = h("textarea", { class: "dc-ta wt-box", rows: "3", maxlength: "2000", placeholder: q.box_hint || "What would you like changed?", "aria-label": q.box_hint || "What would you like changed?" });
+            box.value = d.box || "";
+            box.addEventListener("input", () => { const dd = wtDraft(doc.id); dd.box = box.value; wtSave(doc.id, dd); });
+            qbox.push(box);
+          }
+          if (ch && ch.opens_box) qbox.push(h("div", { class: "dc-row wt-sendrow" }, h("button", { type: "button", class: "dc-btn wt-send", onclick: (e) => send("choice", e.currentTarget) }, "Send")));
+        } else {
+          qbox.push(h("ul", { class: "wt-points" }, ...(q.choices || []).map((c) => h("li", { text: c.label }))));
+          const all = (doc.answers || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+          if (all.length) qbox.push(h("ul", { class: "dc-opens", "aria-label": "Answers" }, ...all.map((a) => h("li", {},
+            `${a.name || "Someone"}${a.shared ? " (shared link)" : ""}: ${a.choice ? a.choice : a.decision === "approve" ? "Looks good" : "Comment"}${a.box ? " - " + a.box : ""}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`))));
+        }
+        end.push(h("div", { class: "wt-q" }, ...qbox));
+      }
+      const err = st.err ? [h("p", { class: "wt-err", role: "alert", text: st.err })] : [];
+      // ‹ 2 of 7 › and one dot per slide (orange when it has an unsent comment); every control carries data-slide
+      const nav = h("div", { class: "wt-nav" },
+        h("button", { type: "button", class: "wt-arrow wt-prev", "data-slide": String(Math.max(1, st.n - 1)), "aria-label": "Previous slide", disabled: st.n === 1, onclick: () => go(st.n - 1) }, "‹"),
+        h("div", { class: "wt-mid" }, h("span", { class: "wt-count", text: `${st.n} of ${total}` }),
+          h("div", { class: "wt-dots" }, ...slides.map((_, k) => h("button", { type: "button", class: "wt-dot" + (k + 1 === st.n ? " on" : "") + (noted.includes(k + 1) ? " noted" : ""),
+            "data-slide": String(k + 1), "aria-label": `Slide ${k + 1}` + (noted.includes(k + 1) ? " (has a comment)" : ""), "aria-current": k + 1 === st.n ? "true" : null, onclick: () => go(k + 1) })))),
+        h("button", { type: "button", class: "wt-arrow wt-next", "data-slide": String(Math.min(total, st.n + 1)), "aria-label": "Next slide", disabled: st.n === total, onclick: () => go(st.n + 1) }, "›"));
+      // Looks good (a report's last slide) and Comment
+      const acts = visitor ? h("div", { class: "dc-row wt-acts" },
+        h("button", { type: "button", class: "dc-btn dc-ok", hidden: !!(q || !last), onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Looks good"),
+        h("button", { type: "button", class: "dc-btn dc-ghost wt-cmtbtn", "aria-expanded": String(!!st.open), onclick: () => { st.open = !st.open; draw(); if (st.open) el.querySelector(".wt-ta")?.focus(); } }, st.open ? "Close comment" : "Comment")) : null;
+      // the comment box: one per slide, or one for all slides
+      let cmt = null;
+      if (visitor) {
+        const ta = h("textarea", { class: "dc-ta wt-ta", rows: "3", maxlength: "4000", placeholder: st.all ? "Your comment on the whole document" : `Your comment on slide ${st.n}`, "aria-label": st.all ? "Comment on all slides" : `Comment on slide ${st.n} of ${total}` });
+        ta.value = (st.all ? d.all : d.slides[st.n]) || "";
+        ta.addEventListener("input", () => {
+          const dd = wtDraft(doc.id); if (st.all) dd.all = ta.value; else dd.slides[st.n] = ta.value; wtSave(doc.id, dd);
+          const nn = wtNoted(dd, total);
+          el.querySelectorAll(".wt-dot").forEach((b) => b.classList.toggle("noted", nn.includes(+b.dataset.slide)));
+          tell();
+        });
+        cmt = h("div", { class: "wt-cmt", hidden: !st.open },
+          h("div", { class: "wt-cmthead" }, h("span", { class: "wt-cmtlab", text: st.all ? "Comment on all slides" : `Comment on slide ${st.n} of ${total}` }),
+            h("button", { type: "button", class: "wt-chip", "aria-pressed": String(!!st.all), title: st.all ? "Back to a comment for each slide" : "Write one comment for the whole document",
+              onclick: () => { st.all = !st.all; draw(); el.querySelector(".wt-ta")?.focus(); } }, "All slides")),
+          ta, h("div", { class: "dc-row wt-cmtsend" }, h("button", { type: "button", class: "dc-btn dc-ghost wt-sendcmt", onclick: (e) => send("comment", e.currentTarget) }, "Send comment")));
+      }
+      const full = fullLink(ctx, doc);
+      const links = h("div", { class: "wt-links" },
+        h("button", { type: "button", class: "wt-open dc-main", onclick: open }, icon(ctx, "doc"), "Open the full document"),
+        ...(full ? [full] : []));
+      const head = h("div", { class: "wt-head" }, h("span", { class: "wt-doc", text: card.title || doc.title || "" }),
+        ...(doc.waiting ? [h("span", { class: "dc-due wt-due" + (card.answer_by && new Date(card.answer_by + "T23:59:59") < new Date() ? " dc-late" : ""), text: dueLine(ctx, doc) })] : []));
+      const box = h("div", { class: "dc-card dc-wt", tabindex: "0", "data-wt": "1", "data-n": String(st.n), "data-total": String(total), "data-question": q ? "1" : null,
+        "aria-roledescription": "slides", "aria-label": (card.title || "Document") + ", slides" },
+        head, ...(card.note ? [h("p", { class: "dc-note wt-note" }, h("b", { text: "From M7Alpha: " }), card.note)] : []),
+        slide, ...end, ...err, nav, ...(acts ? [acts] : []), ...(cmt ? [cmt] : []), links,
+        ...(ctx.team ? [h("p", { class: "dc-ournote", text: (doc.opens || []).length ? (doc.opens || []).map((o) => `${o.name}: first opened ${when(o.first_opened_at)}`).join(" · ") : "Not opened yet (only we see this)." })] : []));
+      // arrow keys when the card has focus (not while typing); a swipe left or right on a phone
+      box.addEventListener("keydown", (e) => {
+        if (e.target.closest && e.target.closest("textarea, input")) return;
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        e.preventDefault(); e.stopPropagation(); go(st.n + (e.key === "ArrowRight" ? 1 : -1));
+        el.querySelector(".dc-wt")?.focus({ preventScroll: true });
+      });
+      let sx = null, sy = 0;
+      slide.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+      slide.addEventListener("touchend", (e) => {
+        if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) go(st.n + (dx < 0 ? 1 : -1));
+      }, { passive: true });
+      el.replaceChildren(box);
+    }
+    draw();
+  }
+
   function renderCard(card, el, ctx) {
     const h = ctx.h;
     const doc = Object.assign({}, card.data || {}, { id: card.id, title: card.title, note: card.note, answer_by: card.answer_by, waiting: card.waiting });
+    if (hasWalk(doc)) return renderWalk(card, doc, el, ctx);
     const open = () => reader(doc, ctx, { onOpened: () => { if (doc.ask === "read") ctx.refresh && ctx.refresh(); } });
     const pc = doc.page_count || (doc.pages || []).length;
     el.classList.add("dc-cardhost");

@@ -141,3 +141,98 @@ body.night .dc-sent li.dc-empty { color: var(--ink-3, #7d8789); }
   .dc-card.dc-card-full { grid-template-columns: 1fr; gap: 14px; padding: 10px; }
   .dc-card-full .dc-cbody { position: static; }
 }
+
+/* ===== Part 30 (24 Nov 2026): the walk-through card. A short run of slides in the studio's own look (not the colours of
+   the PDFs), arrows under it, the question on the last slide. Off-white #FAF9F6, cream #F4F1EC, ink #111214, teal #2c6a72,
+   the orange dot of the pieces #f19b1f. ===== */
+.dc-card.dc-wt { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; max-width: 760px; width: 100%; padding: 22px 26px 18px; outline: none; }
+.dc-card.dc-wt:focus-visible { box-shadow: 0 0 0 3px var(--teal, #479aa4), 0 .25em 1em rgba(17, 18, 20, .07); }
+.wt-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line, #dfe6e6); }
+.wt-doc { font-size: 13.5px; font-weight: 800; color: var(--ink-2, #4a5557); letter-spacing: .01em; }
+.wt-due { font-size: 13.5px; }
+.wt-note { font-size: 14px; }
+.wt-slide { display: grid; align-content: start; gap: 14px; min-height: 260px; padding: 6px 2px 4px; touch-action: pan-y; }
+.wt-slide.wt-endslide { min-height: 0; }
+.wt-kicker { margin: 0; font-size: 12.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--teal-d, #2c6a72); }
+.wt-title { margin: 0; font-size: 32px; line-height: 1.08; font-weight: 800; letter-spacing: -.015em; color: var(--ink, #111214); overflow-wrap: break-word; text-wrap: balance; }
+.wt-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.wt-figs.wt-one { grid-template-columns: minmax(0, 260px); }
+.wt-fig { display: grid; gap: 2px; padding: 14px 16px; border-radius: 14px; background: #F4F1EC; border: 1px solid #e6e1d8; }
+.wt-fig b { font-size: 38px; line-height: 1.05; font-weight: 800; color: var(--teal-d, #2c6a72); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.wt-fig span { font-size: 14px; font-weight: 700; color: var(--ink-2, #4a5557); }
+.wt-body, .wt-after { margin: 0; font-size: 18px; line-height: 1.45; color: var(--ink, #111214); max-width: 60ch; text-wrap: pretty; }
+.wt-after { font-size: 16px; color: var(--ink-2, #4a5557); }
+.wt-points { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; max-width: 62ch; counter-reset: wt; }
+.wt-points li { position: relative; padding-left: 26px; font-size: 17px; line-height: 1.45; color: var(--ink, #111214); text-wrap: pretty; }
+.wt-points li::before { content: ""; position: absolute; left: 6px; top: .62em; width: 8px; height: 8px; border-radius: 50%; background: var(--teal, #479aa4); }
+.wt-points.wt-num li { padding-left: 38px; counter-increment: wt; }
+.wt-points.wt-num li::before { content: counter(wt); left: 0; top: .08em; width: 26px; height: 26px; border-radius: 50%; background: var(--teal-d, #2c6a72); color: #FAF9F6;
+  font-size: 14px; font-weight: 800; line-height: 26px; text-align: center; }
+.wt-points b { font-weight: 800; }
+/* the question */
+.wt-q { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: #F4F1EC; border: 1px solid #e6e1d8; }
+.wt-qtext { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink, #111214); text-wrap: balance; }
+.wt-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.wt-choice { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1.5px solid #c9d3d3; background: #FAF9F6; color: var(--ink, #111214); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.wt-choice:hover { border-color: var(--teal-d, #2c6a72); }
+.wt-choice[aria-pressed="true"] { background: var(--teal-d, #2c6a72); border-color: var(--teal-d, #2c6a72); color: #FAF9F6; }
+.wt-q .wt-points li { font-size: 15.5px; }
+.wt-send { background: var(--teal-d, #2c6a72); color: #FAF9F6; min-width: 120px; }
+.wt-send:hover { background: #245a61; }
+.wt-done { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #eaf4ee; border: 1px solid #cfe5d7; }
+.wt-said { margin: 0; display: flex; align-items: center; gap: 4px; font-weight: 800; color: var(--ok, #1f8a5b); }
+.wt-said .dc-ic svg { width: 20px; height: 20px; display: block; }
+.wt-words { margin: 0; font-size: 15px; color: var(--ink, #111214); white-space: pre-wrap; }
+.wt-when { margin: 0; font-size: 13px; color: var(--ink-3, #7d8789); }
+.wt-err { margin: 0; padding: 10px 12px; border-radius: 12px; background: #fdf1e4; border: 1px solid #f0c99b; color: var(--chg, #b45d00); font-weight: 700; font-size: 15px; }
+/* the arrows and "2 of 7" */
+.wt-nav { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 4px; }
+.wt-arrow { width: 46px; height: 46px; flex: none; border-radius: 50%; border: 1px solid #d5dcdc; background: #FAF9F6; color: var(--ink, #111214); font: inherit; font-size: 28px; line-height: 1;
+  padding: 0 0 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.wt-arrow.wt-next { background: var(--teal-d, #2c6a72); border-color: var(--teal-d, #2c6a72); color: #FAF9F6; }
+.wt-arrow:hover:not(:disabled) { border-color: var(--ink, #111214); }
+.wt-arrow:disabled { opacity: .3; cursor: default; }
+.wt-mid { display: grid; justify-items: center; gap: 6px; min-width: 90px; }
+.wt-count { font-size: 15px; font-weight: 800; color: var(--ink, #111214); }
+.wt-dots { display: flex; gap: 2px; }
+.wt-dot { position: relative; width: 18px; height: 18px; padding: 0; border: 0; background: none; cursor: pointer; }
+.wt-dot::after { content: ""; position: absolute; left: 5px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: rgba(17, 18, 20, .2); }
+.wt-dot.on::after { background: var(--teal-d, #2c6a72); }
+.wt-dot.noted::after { background: #f19b1f; box-shadow: 0 0 0 2px rgba(241, 155, 31, .3); }
+.wt-dot.on.noted::after { background: #b45d00; }
+.wt-acts { justify-content: center; margin-top: 0; }
+.dc-wt [hidden] { display: none !important; }
+.wt-cmt { display: grid; gap: 8px; }
+.wt-cmt[hidden] { display: none; }
+.wt-cmthead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wt-cmtlab { font-size: 14px; font-weight: 800; color: var(--ink, #111214); }
+.wt-chip { flex: none; font: inherit; font-size: 12.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; border: 1px solid #d5dcdc; background: #FAF9F6; color: var(--ink, #111214); cursor: pointer; }
+.wt-chip[aria-pressed="true"] { background: #3d6d72; border-color: #3d6d72; color: #FAF9F6; }
+.wt-cmtsend { margin-top: 0; }
+/* always one tap away: the reader and the full version */
+.wt-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 18px; padding-top: 12px; border-top: 1px solid var(--line, #dfe6e6); }
+.wt-open, .wt-open.dc-main { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: none; font: inherit; font-weight: 700; font-size: 14px;
+  color: var(--teal-d, #2c6a72); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.wt-open.dc-main:hover { background: none; color: #245a61; }
+.wt-open .dc-ic svg { width: 18px; height: 18px; display: block; }
+.wt-links .dc-full .dc-ic svg { width: 18px; height: 18px; display: block; }
+@media (max-width: 640px) {
+  .dc-card.dc-wt { padding: 16px 16px 14px; gap: 12px; }
+  .wt-slide { min-height: 220px; gap: 12px; }
+  .wt-slide.wt-endslide { min-height: 0; }
+  .wt-title { font-size: 25px; }
+  .wt-fig b { font-size: 32px; }
+  .wt-body { font-size: 17px; }
+  .wt-points li { font-size: 16px; }
+  .wt-choices { display: grid; }
+  .wt-choice { width: 100%; }
+  .wt-acts .dc-btn { flex: 1 1 0; }
+}
+/* a laptop: the toolbar and the bar under the card hold Comment, the choices, Send and Looks good, so the copies inside the
+   card step aside (as on a plain document card). The question and its text box stay in the card. */
+@media (min-width: 901px) {
+  html:not(.inlib) body:not(.embed) .s-body.pcard.bar .dc-wt .wt-acts,
+  html:not(.inlib) body:not(.embed) .s-body.pcard.bar .dc-wt .wt-choices,
+  html:not(.inlib) body:not(.embed) .s-body.pcard.bar .dc-wt .wt-sendrow,
+  html:not(.inlib) body:not(.embed) .s-body.pcard.bar .dc-wt:not([data-question]) .wt-cmtsend { display: none; }
+}
