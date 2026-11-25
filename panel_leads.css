@@ -249,3 +249,21 @@ body.night .ld-empty { color: rgba(244,241,236,.6); }
 body.night .ld-table .ld-c-notes { box-shadow: 1px 0 0 rgba(244,241,236,.1); }
 body.night .ld-input, body.night .ld-sel, body.night .ld-box-in { color-scheme: dark; }
 body.night .ld-att.ld-att-wait { background: rgba(241,155,31,.18); color: #f7c98a; }
+
+/* [25 Nov 2026] Lee: "can the frame be wider?" On a laptop the Leads page may use up to 1,400 px of content, so the
+   Courses table and its Notes box show whole; the page's other blocks keep their own reading widths. Phones unchanged. */
+@media (min-width: 901px) { .ld-page { max-width: 1448px; } }
+/* the Courses / Year groups table fits 1,052 px (a 1366 laptop) with no sideways scroll: tighter cells, number boxes as
+   wide as five digits, long headings may break inside a word (with a hyphen), the course name column at least 140 px,
+   and Notes takes whatever is left (at least 190 px) */
+.ld-courses .ld-th { min-width: 0; font-size: 12px; line-height: 1.2; vertical-align: bottom; padding: 8px 6px; -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
+.ld-courses .ld-td { padding: 7px 6px; }
+.ld-courses tbody th.ld-td { min-width: 140px; padding-left: 12px; }
+.ld-courses thead .ld-th:first-child { padding-left: 12px; }
+.ld-courses .ld-inputcell { padding: 4px 4px; }
+.ld-courses .ld-box-in { width: 54px; padding: 6px 6px; }
+.ld-courses .ld-notecol { min-width: 150px; width: 100%; }
+.ld-courses .ld-notecol .ld-box-in.ld-box-notes { width: 100%; min-width: 140px; }
+.ld-courses td.ld-nowrap { white-space: normal; min-width: 56px; }      /* the start date may take two lines ("7 Oct / 2026") */
+/* small grey words on the cream: darker in day (they measured 3.5:1 against the 4.5 needed; night is unchanged) */
+.ld-grp, .ld-empty, .ld-th { color: #4a5557; }

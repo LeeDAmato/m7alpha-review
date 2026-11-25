@@ -525,21 +525,37 @@
       const rows = reportRows(kind); if (!rows.length) return;
       const monthly = kind === "y1_month";
       const myFields = monthly ? fields.filter((f) => ["visited", "registrations", "notes"].includes(f.key)) : fields;
-      const heads = [monthly ? "Month" : title === "Courses" || title === "Past courses" ? "Course" : "Year group"].concat(monthly ? [] : ["Starts"], ["Enquiries (Facebook, Instagram)", "Enquiries (Google)", "Total", "Ad spend"], myFields.map((f) => monthly && f.key === "visited" ? "Families who visited that month" : monthly && f.key === "registrations" ? "Registrations that month" : f.label), monthly ? [] : ["Places left", "Enquiries per registration", "Ad cost per registration"]);
+      // [25 Nov 2026] the columns as one list, so their order is one setting (setup.course_order): "sheet" keeps the
+      // client's Google Sheet order (Course, Starts, our four figures, their boxes, the three that work themselves out);
+      // "client_first" puts their three number boxes first, then our four, the three, and Notes last. Notes is widest.
+      // a long heading word may break at a marked point (a soft hyphen: invisible unless the word breaks there), so the
+      // narrow number columns stay narrow; the download takes the marks out again
+      const soft = (x) => String(x).replace(/(Regis)(trations?)/g, "$1­$2").replace(/(regis)(trations?)/g, "$1­$2").replace(/(Kinder)(garten)/g, "$1­$2").replace(/(Enqui)(ries)/g, "$1­$2");
+      const fLab = (f) => monthly && f.key === "visited" ? "Families who visited that month" : monthly && f.key === "registrations" ? "Registrations that month" : f.label;
+      const C = {};
+      const col = (k, head, cls, cell) => (C[k] = { head, cls, cell });
+      col("starts", "Starts", "ld-nowrap", (r) => r.starts && /^\d{4}-\d{2}-\d{2}/.test(r.starts) ? fmtDate(r.starts, true) : (r.starts || ""));
+      col("fb", "Enquiries (Facebook, Instagram)", "ld-numcell", (r, x) => x.fb ?? "");
+      col("go", "Enquiries (Google)", "ld-numcell", (r, x) => x.go ?? "");
+      col("tot", "Total", "ld-numcell", (r, x) => String(x.t));
+      col("sp", "Ad spend", "ld-numcell", (r, x) => money(x.sp));
+      myFields.forEach((f) => col("f:" + f.key, fLab(f), "ld-inputcell" + (f.key === "notes" ? " ld-notecol" : ""), (r) => inputBox(r, f)));
+      col("left", "Places left", "ld-numcell", (r, x) => x.places != null && x.regs != null ? String(x.places - x.regs) : "");
+      col("per", "Enquiries per registration", "ld-numcell", (r, x) => x.t !== "" && x.regs ? String(Math.round(x.t / x.regs * 10) / 10) : "");
+      col("cost", "Ad cost per registration", "ld-numcell", (r, x) => x.sp != null && x.regs ? money(Math.round(x.sp / x.regs)) : "");
+      const ours = ["fb", "go", "tot", "sp"], boxes = myFields.filter((f) => f.key !== "notes").map((f) => "f:" + f.key), notes = myFields.some((f) => f.key === "notes") ? ["f:notes"] : [];
+      const order = monthly ? [...ours, ...myFields.map((f) => "f:" + f.key)]
+        : s.course_order === "client_first" ? ["starts", ...boxes, ...ours, "left", "per", "cost", ...notes]
+        : ["starts", ...ours, ...boxes, ...notes, "left", "per", "cost"];
+      const heads = [monthly ? "Month" : title === "Courses" || title === "Past courses" ? "Course" : "Year group"];
       const tr = rows.map((r) => {
-        const fb = num(r.data.enquiries_meta), go = num(r.data.enquiries_google), t = fb == null && go == null ? "" : (fb || 0) + (go || 0), sp = num(r.data.spend);
-        const regs = num(inputVal(r.key, "registrations")), places = num(inputVal(r.key, "places"));
+        const fb = num(r.data.enquiries_meta), go = num(r.data.enquiries_google), sp = num(r.data.spend);
+        const x = { fb, go, sp, t: fb == null && go == null ? "" : (fb || 0) + (go || 0), regs: num(inputVal(r.key, "registrations")), places: num(inputVal(r.key, "places")) };
         return h("tr", {}, h("th", { class: "ld-td", scope: "row" }, r.label || r.key, r.grp && r.grp !== r.label ? h("small", { class: "ld-grp", text: r.grp }) : null),
-          monthly ? null : h("td", { class: "ld-td ld-nowrap", text: r.starts && /^\d{4}-\d{2}-\d{2}/.test(r.starts) ? fmtDate(r.starts, true) : (r.starts || "") }),
-          h("td", { class: "ld-td ld-numcell", text: fb ?? "" }), h("td", { class: "ld-td ld-numcell", text: go ?? "" }), h("td", { class: "ld-td ld-numcell", text: String(t) }),
-          h("td", { class: "ld-td ld-numcell", text: money(sp) }),
-          myFields.map((f) => h("td", { class: "ld-td ld-inputcell" }, inputBox(r, f))),
-          monthly ? null : [h("td", { class: "ld-td ld-numcell", text: places != null && regs != null ? String(places - regs) : "" }),
-            h("td", { class: "ld-td ld-numcell", text: t !== "" && regs ? String(Math.round(t / regs * 10) / 10) : "" }),
-            h("td", { class: "ld-td ld-numcell", text: sp != null && regs ? money(Math.round(sp / regs)) : "" })]);
+          order.map((k) => { const v = C[k].cell(r, x); return h("td", { class: "ld-td " + C[k].cls }, typeof v === "object" && v ? v : String(v)); }));
       });
-      out.append(h("h2", { class: "ld-h2", text: title }), h("div", { class: "ld-tablewrap" }, h("table", { class: "ld-table ld-sum ld-courses" },
-        h("thead", {}, h("tr", {}, heads.map((x) => h("th", { class: "ld-th", scope: "col", text: x })))), h("tbody", {}, tr))));
+      out.append(h("h2", { class: "ld-h2", text: title }), h("div", { class: "ld-tablewrap" }, h("table", { lang: "en", class: "ld-table ld-sum ld-courses" + (s.course_order === "client_first" && !monthly ? " ld-clientfirst" : "") },
+        h("thead", {}, h("tr", {}, heads.concat(order.map((k) => C[k].head)).map((t, j) => h("th", { class: "ld-th" + (j && order[j - 1] === "f:notes" ? " ld-notecol" : ""), scope: "col", text: soft(t) })))), h("tbody", {}, tr))));
     });
     if (out.children.length === 1) out.append(h("p", { class: "ld-empty", text: "No rows yet." }));
     return out;
@@ -669,10 +685,11 @@
       cEl.querySelectorAll("h2, table").forEach((n) => {
         if (n.tagName === "H2") { cRows.push([]); cRows.push([{ v: n.textContent, s: 6 }]); return; }
         n.querySelectorAll("tr").forEach((tr) => cRows.push([...tr.children].map((td) => {
-          const inp = td.querySelector("input, textarea"); const t = inp ? inp.value : td.textContent;
+          const inp = td.querySelector("input, textarea"); const t = (inp ? inp.value : td.textContent).replace(/­/g, "");
           const m = /^€([\d,]+(\.\d+)?)$/.exec(t); return m ? { v: Number(m[1].replace(/,/g, "")), s: 7 } : (t !== "" && !isNaN(t) ? { v: Number(t), s: inp ? 8 : 0 } : { v: t, s: td.tagName === "TH" ? 1 : inp ? 8 : 0 }); })));
       });
-      sheets.push({ name: s.summary_kind === "ff" ? "Courses" : "Year groups", rows: cRows, widths: [34, 14, 14, 12, 10, 12, 14, 14, 14, 30, 12, 12, 14] });
+      const nh = [...(cEl.querySelector("thead tr")?.children || [])].findIndex((th) => th.textContent === "Notes");
+      sheets.push({ name: s.summary_kind === "ff" ? "Courses" : "Year groups", rows: cRows, widths: [...(cEl.querySelector("thead tr")?.children || [])].map((th, j) => j === 0 ? 34 : j === nh ? 40 : 14) });
     }
     return sheets;
   }

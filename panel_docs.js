@@ -405,6 +405,17 @@
     WT.set(doc.id, st);
     st.n = Math.min(Math.max(1, st.n || 1), total);
     el.classList.add("dc-cardhost");
+    // [PART E5, 25 Nov 2026] a laptop shows the real pages (when the document has them); the slides are one click away
+    // [PART F-docs, 25 Nov 2026] the document's own pages: page 1 is the overview, the next pages the detail (Lee: "merge
+    // the full versions of the pdf with the new 1 pagers"). E5's stand-in (the full version's pages) is gone.
+    const PG = (Array.isArray(doc.pages) ? doc.pages : []).filter((p) => p && p.path), lap = PG.length > 0 && matchMedia("(min-width: 901px)").matches && !ctx.phone();
+    if (!st.view) st.view = "pages";
+    // full screen opens on the page that is showing (the reader keeps its zoom, for the small print)
+    const openPages = () => { const r = reader(Object.assign({}, doc, { pages: PG }), ctx, { noFoot: true });
+      const pg = r && r.el && r.el.querySelector(`.dc-page[data-n="${st.p}"]`), bd = r && r.el && r.el.querySelector(".dc-rbody");
+      if (pg && bd && st.p > 1) requestAnimationFrame(() => { bd.scrollTop += pg.getBoundingClientRect().top - bd.getBoundingClientRect().top - 12; }); };
+    st.p = Math.min(Math.max(1, st.p || 1), Math.max(1, PG.length));
+    const redraw = () => el.dispatchEvent(new CustomEvent("dc-redraw", { bubbles: true }));      // the page draws the card (and its toolbar) again
     const open = () => reader(doc, ctx, { noFoot: true });
     const tell = () => el.dispatchEvent(new CustomEvent("dc-slide", { bubbles: true, detail: { n: st.n, total, noted: wtNoted(wtDraft(doc.id), total), last: st.n === total, question: !!q } }));
     const go = (n) => { n = Math.min(Math.max(1, n), total); if (n === st.n) return; st.n = n; st.err = ""; draw(); tell(); };
@@ -431,7 +442,7 @@
         const r = await ctx.rpc("answer_walkthrough", args);
         if (!r || r.error) throw new Error((r && r.error) || "failed");
         st.sent = { decision, choice: ch ? ch.label : null, box: args.p_box, comment: comment || null, slides: args.p_slide_comments, at: new Date().toISOString() };
-        st.err = ""; st.choice = null; st.open = false; st.all = false; st.n = total;
+        st.err = ""; st.choice = null; st.open = false; st.all = false; st.n = total; st.ask = false;      // [PART F-docs] the bar goes back to Answer the question
         wtSave(doc.id, { slides: {}, all: "", box: "" });
         draw(); tell();
         ctx.toast("Sent to M7Alpha");
@@ -439,7 +450,128 @@
       } catch (e) { busy(btn, false); fail(String(e.message)); }
     }
 
+    // [PART F-docs, 25 Nov 2026] one page at a time, "<" and ">" on the page's sides, page 1 (the overview) first. A page
+    // taller than the screen scrolls inside the card's own frame (.pcwrap, the one scroll bar the card already has).
+    function drawPages() {
+      const d = wtDraft(doc.id), P = PG.length, prev = st.sent || mineLast();
+      st.all = true;            // one comment for the whole document here (page comments would arrive labelled as slides)
+      const what = (n) => P < 2 ? "" : n === 1 ? "the overview" : "more detail";
+      const pageImg = (p, i) => h("img", { class: "dc-cpage wtc-page", src: ctx.mediaUrl(p.path), alt: `Page ${i + 1} of ${P}` + (what(i + 1) ? `, ${what(i + 1)}` : ""),
+        width: p.w, height: p.h, "data-page": String(i + 1), hidden: i + 1 !== st.p, loading: i + 1 === st.p || i + 1 === st.p + 1 ? "eager" : "lazy", decoding: "async" });
+      const imgs = PG.map(pageImg);
+      const prevB = h("button", { type: "button", class: "wt-arrow wt-prev wtc-arrow", "aria-label": "Previous page", title: "Previous page", disabled: st.p <= 1, onclick: () => setPage(st.p - 1) }, "‹");
+      const nextB = h("button", { type: "button", class: "wt-arrow wt-next wtc-arrow", "aria-label": "Next page", title: "Next page", disabled: st.p >= P, onclick: () => setPage(st.p + 1) }, "›");
+      const frame = h("div", { class: "wtc-frame" }, ...imgs);
+      const stage = h("div", { class: "wtc-stage" + (P < 2 ? " wtc-one" : ""), role: "group", "aria-roledescription": "carousel", "aria-label": "Pages of " + (card.title || doc.title || "the document") },
+        frame, ...(P > 1 ? [prevB, nextB] : []));
+      const count = h("p", { class: "wtc-count", "aria-live": "polite" });
+      const countText = () => P < 2 ? "1 page" : `Page ${st.p} of ${P}: ${what(st.p)}`;
+      count.textContent = countText();
+      // the toolbar's page numbers and "Answer the question" press these hidden controls, as they do the slide dots
+      const dots = h("div", { class: "wt-dots wtp-hidden" }, ...PG.map((_, k) => h("button", { type: "button", class: "wt-dot" + (k + 1 === st.p ? " on" : ""), "data-slide": String(k + 1), "aria-label": `Page ${k + 1}`, tabindex: "-1", onclick: () => setPage(k + 1) })));
+      // "Answer the question" (toolbar): the question opens above the page, the choices go in the bar, the page stays
+      const askB = h("button", { type: "button", class: "wtc-ask", tabindex: "-1", onclick: () => { st.ask = true; box.dataset.ask = "1"; tellPage();
+        const qb = el.querySelector(".wt-q"); if (qb) { qb.hidden = false; const sc = el.closest(".pcwrap"); if (sc) sc.scrollTop = 0;
+          qb.classList.remove("wtc-flash"); void qb.offsetWidth; qb.classList.add("wtc-flash"); requestAnimationFrame(() => box._wtcMid && box._wtcMid()); } } });      // the arrows move to the new middle
+      const tellPage = () => el.dispatchEvent(new CustomEvent("dc-slide", { bubbles: true, detail: { n: st.p, total: P, noted: [], last: st.p === P, question: !!q } }));
+      function setPage(n) {
+        n = Math.min(Math.max(1, n), P); if (n === st.p) return;
+        const back = n < st.p; st.p = n;
+        imgs.forEach((im, k) => { const on = k + 1 === n; im.hidden = !on; if (on || k + 1 === n + 1 || k + 1 === n - 1) im.loading = "eager";
+          if (on && !matchMedia("(prefers-reduced-motion: reduce)").matches) { im.classList.remove("wtc-in", "wtc-back"); void im.offsetWidth; im.classList.add("wtc-in"); if (back) im.classList.add("wtc-back"); } });
+        prevB.disabled = n <= 1; nextB.disabled = n >= P; count.textContent = countText();
+        box.dataset.n = String(n); dots.querySelectorAll(".wt-dot").forEach((b) => b.classList.toggle("on", +b.dataset.slide === n));
+        const sc = el.closest(".pcwrap"); if (sc) sc.scrollTop = 0;      // a new page starts at its top
+        requestAnimationFrame(() => box._wtcMid && box._wtcMid());
+        tellPage();
+      }
+      // [F-docs round 2] no side column: the page takes the width of the piece area. Above it, one slim line (title · the
+      // ask · which page), the note from M7Alpha under it, and only what the toolbar opens (the question, the comment box)
+      // or what needs saying (an earlier answer, an error).
+      const late = card.answer_by && new Date(card.answer_by + "T23:59:59") < new Date();
+      const dot = () => h("span", { class: "wtc-sep", "aria-hidden": "true", text: "·" });
+      const top = [h("p", { class: "wtc-line" }, h("b", { class: "wt-doc", text: card.title || doc.title || "" }),
+        ...(doc.waiting ? [dot(), h("span", { class: "dc-due wt-due" + (late ? " dc-late" : ""), text: dueLine(ctx, doc) })] : []), dot(), count)];
+      if (card.note) top.push(h("p", { class: "dc-note wt-note wtc-note" }, h("b", { text: "From M7Alpha: " }), card.note));
+      if (prev && visitor) {
+        const said = prev.choice ? `You chose: ${prev.choice}` : prev.decision === "approve" ? "You said: Approve" : "You sent a comment";
+        top.push(h("div", { class: "wt-done wtc-done", role: "status" }, h("p", { class: "wt-said" }, icon(ctx, "ok"), " " + said,
+          h("span", { class: "wt-when", text: " · " + when(prev.at || prev.created_at) + (q ? ". You can answer again; the newest answer counts." : "") })),
+          ...[prev.box, prev.comment].filter((x) => x && String(x).trim()).map((w) => h("p", { class: "wt-words", text: w }))));
+      }
+      if (q) {
+        const ch = (q.choices || []).find((c) => c.label === st.choice) || null, qbox = [h("p", { class: "wt-qlab", text: "The question" }), h("p", { class: "wt-qtext", text: q.text })];
+        if (visitor) {
+          qbox.push(h("div", { class: "wt-choices", role: "group", "aria-label": q.text }, ...(q.choices || []).map((c) => h("button", { type: "button", class: "wt-choice", "data-choice": c.label, "aria-pressed": String(c.label === st.choice),
+            onclick: (e) => { if (!c.opens_box) { st.choice = c.label; st.err = ""; return send("choice", e.currentTarget); }
+              st.choice = c.label === st.choice ? null : c.label; st.err = ""; draw(); tell(); if (st.choice) el.querySelector(".wt-box")?.focus(); } }, c.label))));
+          if (ch && ch.opens_box) {
+            const bx = h("textarea", { class: "dc-ta wt-box", rows: "3", maxlength: "2000", placeholder: q.box_hint || "What would you like changed?", "aria-label": q.box_hint || "What would you like changed?" });
+            bx.value = d.box || ""; bx.addEventListener("input", () => { const dd = wtDraft(doc.id); dd.box = bx.value; wtSave(doc.id, dd); });
+            qbox.push(bx, h("div", { class: "dc-row wt-sendrow" }, h("button", { type: "button", class: "dc-btn wt-send", onclick: (e) => send("choice", e.currentTarget) }, "Send")));
+          }
+        } else {
+          qbox.push(h("ul", { class: "wt-points" }, ...(q.choices || []).map((c) => h("li", { text: c.label }))));
+          const all = (doc.answers || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+          if (all.length) qbox.push(h("ul", { class: "dc-opens", "aria-label": "Answers" }, ...all.map((a) => h("li", {},
+            `${a.name || "Someone"}${a.shared ? " (shared link)" : ""}: ${a.choice ? a.choice : a.decision === "approve" ? "Approved" : "Comment"}${a.box ? " - " + a.box : ""}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`))));
+        }
+        // behind "Answer the question" (the team always sees it: it lists the answers)
+        top.push(h("div", { class: "wt-q", hidden: !(st.ask || ctx.team || st.choice || st.err) }, ...qbox));
+      }
+      if (st.err) top.push(h("p", { class: "wt-err", role: "alert", text: st.err }));
+      if (visitor) {
+        top.push(h("div", { class: "dc-row wt-acts" },
+          h("button", { type: "button", class: "dc-btn dc-ok", hidden: !!q, onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Approve"),
+          h("button", { type: "button", class: "dc-btn dc-ghost wt-cmtbtn", "aria-expanded": String(!!st.open), onclick: () => { st.open = !st.open; draw(); if (st.open) { const sc = el.closest(".pcwrap"); if (sc) sc.scrollTop = 0; el.querySelector(".wt-ta")?.focus({ preventScroll: true }); } } }, st.open ? "Close comment" : "Comment")));
+        const ta = h("textarea", { class: "dc-ta wt-ta", rows: "3", maxlength: "4000", placeholder: "Your comment on the document", "aria-label": "Comment on the document" });
+        ta.value = d.all || ""; ta.addEventListener("input", () => { const dd = wtDraft(doc.id); dd.all = ta.value; wtSave(doc.id, dd); tell(); });
+        top.push(h("div", { class: "wt-cmt", hidden: !st.open }, h("div", { class: "wt-cmthead" }, h("span", { class: "wt-cmtlab", text: "Comment on the document" })), ta,
+          h("div", { class: "dc-row wt-cmtsend" }, h("button", { type: "button", class: "dc-btn dc-ghost wt-sendcmt", onclick: (e) => send("comment", e.currentTarget) }, "Send comment"))));
+      }
+      // the short slides repeat page 1 (the overview), so a laptop offers them only for a one-page document. [R2 fix, 25 Nov 2026]
+      // the page view set one comment for the whole document (st.all); the slides go back to a comment for each slide
+      if (P < 2) top.push(h("p", { class: "wtc-slides" }, h("button", { type: "button", class: "linkbtn wtp-switch", onclick: () => { st.view = "slides"; st.n = 1; st.all = false; redraw(); } }, `See the short version (${total} slide${total === 1 ? "" : "s"})`)));
+      if (ctx.team) top.push(h("p", { class: "dc-ournote", text: (doc.opens || []).length ? (doc.opens || []).map((o) => `${o.name}: first opened ${when(o.first_opened_at)}`).join(" · ") : "Not opened yet (only we see this)." }));
+      // the toolbar's Download presses this: the card's own file is the whole document now, so it is always "Download (PDF)"
+      const dl = doc.file_path ? h("a", { class: "dc-full", href: fileUrl(ctx, doc, true), download: doc.file_name || "document.pdf", tabindex: "-1",
+        onclick: () => { if (visitor) recordOpen(ctx, doc, "download").catch(() => {}); } }, "Download (PDF)") : null;
+      const box = h("div", { class: "dc-card dc-wt dc-wtp dc-wtc", tabindex: "0", "data-wt": "1", "data-unit": "Pages", "data-n": String(st.p), "data-total": String(P), "data-question": q ? "1" : null,
+        "data-ask": st.ask ? "1" : null, "aria-roledescription": "pages", "aria-label": (card.title || "Document") + ", pages" },
+        h("div", { class: "wtc-top" }, ...top), stage, h("div", { class: "wtp-hidden" }, dots, askB, ...(dl ? [dl] : [])));
+      box.addEventListener("keydown", (e) => {
+        if (e.target.closest && e.target.closest("textarea, input")) return;
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        e.preventDefault(); e.stopPropagation(); setPage(st.p + (e.key === "ArrowRight" ? 1 : -1));
+      });
+      // a swipe on a touch screen laptop
+      let sx = null, sy = 0;
+      frame.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+      frame.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) setPage(st.p + (dx < 0 ? 1 : -1)); }, { passive: true });
+      el.replaceChildren(box);
+      // the arrows sit in the middle of what shows of the page, however far it is scrolled. The card is drawn before the
+      // page puts it in its frame (.pcwrap), so the frame is looked up when the arrows are placed, not now.
+      if (P > 1) {
+        // the page's own middle when it fits, the frame's middle when it is taller. Measured from where the arrow really
+        // is, so it holds whatever padding or centring sits around the card.
+        let watched = null;
+        const mid = () => { const im = imgs[st.p - 1], sc = el.closest(".pcwrap"); if (!im || !sc || !box.isConnected) return;
+          if (watched !== sc) { watched = sc; if ("ResizeObserver" in window) new ResizeObserver(() => mid()).observe(sc);
+            if (!sc._wtcL) { sc._wtcL = true; sc.addEventListener("scroll", () => { const b = sc.querySelector(".dc-wtc"); b && b._wtcMid && b._wtcMid(); }, { passive: true }); } }
+          const pr = im.getBoundingClientRect(), sr = sc.getBoundingClientRect(), ar = nextB.getBoundingClientRect();
+          if (!pr.height || !ar.height) return;
+          const want = (Math.max(pr.top, sr.top) + Math.min(pr.bottom, sr.bottom)) / 2, cur = parseFloat(getComputedStyle(nextB).top) || 0;
+          const top = Math.max(8, Math.round(cur + want - (ar.top + ar.height / 2)));
+          if (Math.abs(top - cur) > 1) box.style.setProperty("--wtc-mid", top + "px"); };
+        box._wtcMid = mid; requestAnimationFrame(() => { mid(); requestAnimationFrame(mid); }); setTimeout(mid, 400);
+        imgs.forEach((im) => im.addEventListener("load", mid));
+      }
+    }
+
     function draw() {
+      if (lap && st.view === "pages") return drawPages();
       const d = wtDraft(doc.id), s = slides[st.n - 1] || {}, last = st.n === total, noted = wtNoted(d, total);
       const figs = (s.figures || []).slice(0, 3), pts = (s.points || []).slice(0, 6);
       const slide = h("div", { class: "wt-slide" + (last && (q || st.sent || mineLast()) ? " wt-endslide" : ""), "aria-live": "polite", "aria-label": `Slide ${st.n} of ${total}` },
@@ -514,10 +646,14 @@
               onclick: () => { st.all = !st.all; draw(); el.querySelector(".wt-ta")?.focus(); } }, "All slides")),
           ta, h("div", { class: "dc-row wt-cmtsend" }, h("button", { type: "button", class: "dc-btn dc-ghost wt-sendcmt", onclick: (e) => send("comment", e.currentTarget) }, "Send comment")));
       }
-      const full = fullLink(ctx, doc);
+      // [PART F-docs follow-up] the card's own file, always "Download (PDF)" (the full version link is no longer needed)
+      const full = doc.file_path ? h("a", { class: "dc-full", href: fileUrl(ctx, doc, true), download: doc.file_name || "document.pdf",
+        onclick: () => { if (visitor) recordOpen(ctx, doc, "download").catch(() => {}); } }, icon(ctx, "down"), "Download (PDF)") : fullLink(ctx, doc);
       const links = h("div", { class: "wt-links" },
-        h("button", { type: "button", class: "wt-open dc-main", onclick: open }, icon(ctx, "doc"), "Open the full document"),
-        ...(full ? [full] : []));
+        lap ? h("button", { type: "button", class: "wt-open wtp-hidden", tabindex: "-1", onclick: open }, "Open full screen")
+          : h("button", { type: "button", class: "wt-open dc-main", onclick: open }, icon(ctx, "doc"), "Open the full document"),
+        ...(full ? [full] : []),
+        ...(lap ? [h("button", { type: "button", class: "linkbtn wtp-switch", onclick: () => { st.view = "pages"; redraw(); } }, `See the page${PG.length === 1 ? "" : "s"} (${PG.length})`)] : []));
       const head = h("div", { class: "wt-head" }, h("span", { class: "wt-doc", text: card.title || doc.title || "" }),
         ...(doc.waiting ? [h("span", { class: "dc-due wt-due" + (card.answer_by && new Date(card.answer_by + "T23:59:59") < new Date() ? " dc-late" : ""), text: dueLine(ctx, doc) })] : []));
       const box = h("div", { class: "dc-card dc-wt", tabindex: "0", "data-wt": "1", "data-n": String(st.n), "data-total": String(total), "data-question": q ? "1" : null,
@@ -555,6 +691,8 @@
     // filling the frame"): every page at full width, running down the card's own scrolling frame; the words and buttons
     // sit beside it on a laptop and under it on a phone. A tap on a page opens the full-screen reader.
     const pg = doc.pages || [];
+    // [PART R2-plaindoc, 25 Nov 2026] a laptop: F-docs' page view (one page at a time, page 1 first), as on Zenco's cards
+    if (pg.length && matchMedia("(min-width: 901px)").matches && !(ctx.phone && ctx.phone())) return renderPlainPages(card, doc, el, ctx, pg, open);
     el.replaceChildren(h("div", { class: "dc-card dc-card-full" },
       h("div", { class: "dc-cpages", role: "group", "aria-label": "Pages of " + card.title },
         ...(pg.length ? pg.map((p, i) => h("img", { class: "dc-cpage", src: ctx.mediaUrl(p.path), alt: `Page ${i + 1} of ${pg.length}`, width: p.w, height: p.h,
@@ -571,6 +709,80 @@
         ctx.team ? h("p", { class: "dc-ournote", text: (doc.opens || []).length ? (doc.opens || []).map((o) => `${o.name}: first opened ${when(o.first_opened_at)}`).join(" · ") : "Not opened yet (only we see this)." }) : null,
         h("div", { class: "dc-row" }, h("button", { class: "dc-btn dc-main", type: "button", onclick: open }, "Open full screen")),
         doc.ask === "answer" && isVisitor(ctx) ? answerBox(doc, ctx, null, true) : (doc.ask === "read" && isVisitor(ctx) ? h("p", { class: "dc-hint", text: "This card goes once you've opened it." }) : null))));
+  }
+
+  // [PART R2-plaindoc, 25 Nov 2026] a plain document card on a laptop, in F-docs' page view (drawPages in renderWalk,
+  // reused): the same classes, so the same look, arrows and scroll. The answer part (.dc-cbody: Approve, the comment box,
+  // Send comment) is the plain card's own, kept above the page and shown by the toolbar's Comment, so the toolbar and
+  // the plain card's sending work as before. The page on screen is kept by document id across redraws.
+  const PV = new Map();
+  function renderPlainPages(card, doc, el, ctx, PG, open) {
+    const h = ctx.h, P = PG.length, visitor = isVisitor(ctx);
+    const st = PV.get(doc.id) || { p: 1 }; PV.set(doc.id, st);
+    st.p = Math.min(Math.max(1, st.p || 1), P);
+    el.classList.add("dc-cardhost");
+    const imgs = PG.map((p, i) => h("img", { class: "dc-cpage wtc-page", src: ctx.mediaUrl(p.path), alt: `Page ${i + 1} of ${P}`, width: p.w, height: p.h,
+      "data-page": String(i + 1), hidden: i + 1 !== st.p, loading: i + 1 === st.p || i + 1 === st.p + 1 ? "eager" : "lazy", decoding: "async" }));
+    const prevB = h("button", { type: "button", class: "wt-arrow wt-prev wtc-arrow", "aria-label": "Previous page", title: "Previous page", disabled: st.p <= 1, onclick: () => setPage(st.p - 1) }, "‹");
+    const nextB = h("button", { type: "button", class: "wt-arrow wt-next wtc-arrow", "aria-label": "Next page", title: "Next page", disabled: st.p >= P, onclick: () => setPage(st.p + 1) }, "›");
+    const frame = h("div", { class: "wtc-frame" }, ...imgs);
+    const stage = h("div", { class: "wtc-stage" + (P < 2 ? " wtc-one" : ""), role: "group", "aria-roledescription": "carousel", "aria-label": "Pages of " + (card.title || doc.title || "the document") },
+      frame, ...(P > 1 ? [prevB, nextB] : []));
+    const countText = () => P < 2 ? "1 page" : `Page ${st.p} of ${P}`;
+    const count = h("span", { class: "wtc-count", "aria-live": "polite", text: countText() });
+    const dots = h("div", { class: "wt-dots wtp-hidden" }, ...PG.map((_, k) => h("button", { type: "button", class: "wt-dot" + (k + 1 === st.p ? " on" : ""), "data-slide": String(k + 1), "aria-label": `Page ${k + 1}`, tabindex: "-1", onclick: () => setPage(k + 1) })));
+    const dl = doc.file_path ? h("a", { class: "dc-full", href: fileUrl(ctx, doc, true), download: doc.file_name || "document.pdf", tabindex: "-1",
+      onclick: () => { if (visitor) recordOpen(ctx, doc, "download").catch(() => {}); } }, "Download (PDF)") : null;
+    const late = card.answer_by && new Date(card.answer_by + "T23:59:59") < new Date();
+    const dot = () => h("span", { class: "wtc-sep", "aria-hidden": "true", text: "·" });
+    const top = [h("p", { class: "wtc-line" }, h("b", { class: "wt-doc", text: card.title || doc.title || "" }),
+      ...(doc.waiting ? [dot(), h("span", { class: "dc-due wt-due" + (late ? " dc-late" : ""), text: dueLine(ctx, doc) })] : []), dot(), count)];
+    if (card.note) top.push(h("p", { class: "dc-note wt-note wtc-note" }, h("b", { text: "From M7Alpha: " }), card.note));
+    if (ctx.team) top.push(h("p", { class: "dc-ournote", text: (doc.opens || []).length ? (doc.opens || []).map((o) => `${o.name}: first opened ${when(o.first_opened_at)}`).join(" · ") : "Not opened yet (only we see this)." }));
+    // the plain card's own answer part: hidden on a laptop until the toolbar's Comment opens its box (index.html's rules)
+    const body = h("div", { class: "dc-cbody" },      // (the ask line is on the top line already: one .dc-due per card)
+      h("div", { class: "dc-row" }, h("button", { class: "dc-btn dc-main wtp-hidden", type: "button", tabindex: "-1", onclick: open }, "Open full screen")),
+      doc.ask === "answer" && visitor ? answerBox(doc, ctx, null, true) : (doc.ask === "read" && visitor ? h("p", { class: "dc-hint", text: "This card goes once you've opened it." }) : null));
+    const box = h("div", { class: "dc-card dc-card-full dc-wt dc-wtc dc-wtp dc-plainpv", tabindex: "0", "data-n": String(st.p), "data-total": String(P),
+      "aria-roledescription": "pages", "aria-label": (card.title || "Document") + ", pages" },
+      h("div", { class: "wtc-top" }, ...top, body), stage, h("div", { class: "wtp-hidden" }, dots, ...(dl ? [dl] : [])));
+    const tellPage = () => el.dispatchEvent(new CustomEvent("dc-slide", { bubbles: true, detail: { n: st.p, total: P, noted: [], last: st.p === P, question: false } }));
+    function setPage(n) {
+      n = Math.min(Math.max(1, n), P); if (n === st.p) return;
+      const back = n < st.p; st.p = n;
+      imgs.forEach((im, k) => { const on = k + 1 === n; im.hidden = !on; if (on || k + 1 === n + 1 || k + 1 === n - 1) im.loading = "eager";
+        if (on && !matchMedia("(prefers-reduced-motion: reduce)").matches) { im.classList.remove("wtc-in", "wtc-back"); void im.offsetWidth; im.classList.add("wtc-in"); if (back) im.classList.add("wtc-back"); } });
+      prevB.disabled = n <= 1; nextB.disabled = n >= P; count.textContent = countText();
+      box.dataset.n = String(n); dots.querySelectorAll(".wt-dot").forEach((b) => b.classList.toggle("on", +b.dataset.slide === n));
+      const sc = el.closest(".pcwrap"); if (sc) sc.scrollTop = 0;      // a new page starts at its top
+      requestAnimationFrame(() => box._wtcMid && box._wtcMid());
+      tellPage();
+    }
+    box.addEventListener("keydown", (e) => {
+      if (e.target.closest && e.target.closest("textarea, input")) return;
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      e.preventDefault(); e.stopPropagation(); setPage(st.p + (e.key === "ArrowRight" ? 1 : -1));
+    });
+    let sx = null, sy = 0;
+    frame.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+    frame.addEventListener("touchend", (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) setPage(st.p + (dx < 0 ? 1 : -1)); }, { passive: true });
+    el.replaceChildren(box);
+    // the arrows in the middle of what shows of the page (F-docs' own rule, copied)
+    if (P > 1) {
+      let watched = null;
+      const mid = () => { const im = imgs[st.p - 1], sc = el.closest(".pcwrap"); if (!im || !sc || !box.isConnected) return;
+        if (watched !== sc) { watched = sc; if ("ResizeObserver" in window) new ResizeObserver(() => mid()).observe(sc);
+          if (!sc._wtcL) { sc._wtcL = true; sc.addEventListener("scroll", () => { const b = sc.querySelector(".dc-wtc"); b && b._wtcMid && b._wtcMid(); }, { passive: true }); } }
+        const pr = im.getBoundingClientRect(), sr = sc.getBoundingClientRect(), ar = nextB.getBoundingClientRect();
+        if (!pr.height || !ar.height) return;
+        const want = (Math.max(pr.top, sr.top) + Math.min(pr.bottom, sr.bottom)) / 2, cur = parseFloat(getComputedStyle(nextB).top) || 0;
+        const tp = Math.max(8, Math.round(cur + want - (ar.top + ar.height / 2)));
+        if (Math.abs(tp - cur) > 1) box.style.setProperty("--wtc-mid", tp + "px"); };
+      box._wtcMid = mid; requestAnimationFrame(() => { mid(); requestAnimationFrame(mid); }); setTimeout(mid, 400);
+      imgs.forEach((im) => im.addEventListener("load", mid));
+    }
   }
 
   // ---------- the attach button builder 1's task card asks for ----------
