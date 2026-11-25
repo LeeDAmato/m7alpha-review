@@ -167,13 +167,13 @@
       busy(btn, true);
       try {
         await call(ctx, "answer_document", Object.assign({ p_client_code: ctx.code, p_doc: doc.id, p_decision: decision, p_comment: comment || null }, link));
-        wrap.replaceChildren(h("p", { class: "dc-thanks" }, icon(ctx, "ok"), decision === "approve" ? " Thanks. We've noted it looks good." : " Thanks. Your comment is with M7Alpha."));
+        wrap.replaceChildren(h("p", { class: "dc-thanks" }, icon(ctx, "ok"), decision === "approve" ? " Thanks. We've noted your approval." : " Thanks. Your comment is with M7Alpha."));
         ctx.toast("Sent to M7Alpha");
         ctx.refresh && ctx.refresh();
         done && setTimeout(done, 900);
       } catch (e) { busy(btn, false); ctx.toast(e.message === "name" ? NAME_FIRST : "That didn't send. Please try again."); }
     };
-    const ok = h("button", { class: "dc-btn dc-ok", type: "button", onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Looks good");
+    const ok = h("button", { class: "dc-btn dc-ok", type: "button", onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Approve");
     const cm = h("button", { class: "dc-btn dc-ghost", type: "button", onclick: (e) => send("comment", e.currentTarget) }, "Send comment");
     wrap.append(...(noAsk ? [] : [h("p", { class: "dc-ask", text: "M7Alpha would like your answer on this." })]), h("div", { class: "dc-row" }, ok), ta, h("div", { class: "dc-row" }, cm));
     return wrap;
@@ -329,7 +329,7 @@
         act(btn, [["document_set_ask", { p_id: d.id, p_ask: mode }], ["ask_client", { p_kind: "document", p_id: d.id, p_answer_by: date.value || null }]], "Card is on their Review page");
       };
       const opens = (d.opens || []).map((o) => h("li", {}, `${o.name || "Someone"}: first opened ${when(o.first_opened_at)}` + (o.open_count > 1 ? `, ${o.open_count} times` : "") + (o.downloaded_at ? ", downloaded" : "")));
-      const answers = (d.answers || []).map((a) => h("li", {}, `${a.name}${a.shared ? " (shared link)" : ""}:${a.decision === "approve" ? "Looks good" : "Comment"}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`));
+      const answers = (d.answers || []).map((a) => h("li", {}, `${a.name}${a.shared ? " (shared link)" : ""}:${a.decision === "approve" ? "Approved" : "Comment"}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`));
       return h("article", { class: "dc-doc dc-team" },
         h("button", { class: "dc-thumb", type: "button", "aria-label": "Read " + d.title, onclick: () => reader(d, ctx) },
           d.thumb ? h("img", { src: ctx.mediaUrl(d.thumb), alt: "", loading: "lazy" }) : icon(ctx, "doc")),
@@ -453,7 +453,7 @@
       const end = [];
       const prev = st.sent || mineLast();
       if (last && prev && visitor) {
-        const said = prev.choice ? `You chose: ${prev.choice}` : prev.decision === "approve" ? "You said: Looks good" : "You sent a comment";
+        const said = prev.choice ? `You chose: ${prev.choice}` : prev.decision === "approve" ? "You said: Approve" : "You sent a comment";
         const words = [prev.box, prev.comment].filter((x) => x && String(x).trim());
         end.push(h("div", { class: "wt-done", role: "status" }, h("p", { class: "wt-said" }, icon(ctx, "ok"), " " + said),
           ...words.map((w) => h("p", { class: "wt-words", text: w })),
@@ -481,7 +481,7 @@
           qbox.push(h("ul", { class: "wt-points" }, ...(q.choices || []).map((c) => h("li", { text: c.label }))));
           const all = (doc.answers || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
           if (all.length) qbox.push(h("ul", { class: "dc-opens", "aria-label": "Answers" }, ...all.map((a) => h("li", {},
-            `${a.name || "Someone"}${a.shared ? " (shared link)" : ""}: ${a.choice ? a.choice : a.decision === "approve" ? "Looks good" : "Comment"}${a.box ? " - " + a.box : ""}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`))));
+            `${a.name || "Someone"}${a.shared ? " (shared link)" : ""}: ${a.choice ? a.choice : a.decision === "approve" ? "Approved" : "Comment"}${a.box ? " - " + a.box : ""}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`))));
         }
         end.push(h("div", { class: "wt-q" }, ...qbox));
       }
@@ -495,7 +495,7 @@
         h("button", { type: "button", class: "wt-arrow wt-next", "data-slide": String(Math.min(total, st.n + 1)), "aria-label": "Next slide", disabled: st.n === total, onclick: () => go(st.n + 1) }, "›"));
       // Looks good (a report's last slide) and Comment
       const acts = visitor ? h("div", { class: "dc-row wt-acts" },
-        h("button", { type: "button", class: "dc-btn dc-ok", hidden: !!(q || !last), onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Looks good"),
+        h("button", { type: "button", class: "dc-btn dc-ok", hidden: !!(q || !last), onclick: (e) => send("approve", e.currentTarget) }, icon(ctx, "ok"), "Approve"),
         h("button", { type: "button", class: "dc-btn dc-ghost wt-cmtbtn", "aria-expanded": String(!!st.open), onclick: () => { st.open = !st.open; draw(); if (st.open) el.querySelector(".wt-ta")?.focus(); } }, st.open ? "Close comment" : "Comment")) : null;
       // the comment box: one per slide, or one for all slides
       let cmt = null;
