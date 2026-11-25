@@ -329,7 +329,7 @@
         act(btn, [["document_set_ask", { p_id: d.id, p_ask: mode }], ["ask_client", { p_kind: "document", p_id: d.id, p_answer_by: date.value || null }]], "Card is on their Review page");
       };
       const opens = (d.opens || []).map((o) => h("li", {}, `${o.name || "Someone"}: first opened ${when(o.first_opened_at)}` + (o.open_count > 1 ? `, ${o.open_count} times` : "") + (o.downloaded_at ? ", downloaded" : "")));
-      const answers = (d.answers || []).map((a) => h("li", {}, `${a.name}${a.shared ? " (shared link)" : ""}:${a.decision === "approve" ? "Approved" : "Comment"}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`));
+      const answers = (d.answers || []).map((a) => h("li", {}, `${a.name}${a.shared ? " (shared link)" : ""}: ${a.decision === "approve" ? "Approved" : "Comment"}${a.comment ? " - " + a.comment : ""} (${when(a.created_at)})`));
       return h("article", { class: "dc-doc dc-team" },
         h("button", { class: "dc-thumb", type: "button", "aria-label": "Read " + d.title, onclick: () => reader(d, ctx) },
           d.thumb ? h("img", { src: ctx.mediaUrl(d.thumb), alt: "", loading: "lazy" }) : icon(ctx, "doc")),
