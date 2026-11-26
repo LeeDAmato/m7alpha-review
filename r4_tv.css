@@ -132,3 +132,25 @@ body.r4 .r4tv-content .r4tv-meta { display: flex; flex-wrap: wrap; align-items: 
 body.r4 .r4tv-content .r4tv-meta .r4tv-mt { white-space: nowrap; }
 body.r4 .r4tv-content .r4tv-meta .r4tv-mchip { flex: none; height: 22px; font-size: 12px; }
 body.r4.r4tv-running #toast { visibility: hidden !important; }
+
+/* ---------- the cover photo on Home's "Next for you" card (r4_tv.js coverHeroes), clients and team, laptop and phone.
+   The words keep their off-white; a dark shade from the left keeps them readable on any picture (measured with
+   contrast_check.py's method on the rendered card, day and night); the small boxes get a dark glass backing. ---------- */
+body.r4 .r4p-hero.r4cov { position: relative; overflow: hidden; isolation: isolate; }
+body.r4 .r4p-hero.r4cov > .r4cov-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: right center; z-index: -2; opacity: 0; transition: opacity .5s ease; }
+body.r4 .r4p-hero.r4cov > .r4cov-shade { position: absolute; inset: 0; z-index: -1; opacity: 0; transition: opacity .5s ease; pointer-events: none;
+  background: linear-gradient(90deg, rgba(17,17,17,.95) 0%, rgba(17,17,17,.92) 42%, rgba(17,17,17,.78) 55%, rgba(17,17,17,.32) 68%, rgba(17,17,17,0) 80%); }
+body.r4 .r4p-hero.r4cov.r4cov-in > .r4cov-img, body.r4 .r4p-hero.r4cov.r4cov-in > .r4cov-shade { opacity: 1; }
+body.r4 .r4p-hero.r4cov .r4p-herot { max-width: 60%; }
+body.r4 .r4p-hero.r4cov .r4p-herom { white-space: normal; color: #E9E8E4; }
+body.r4 .r4p-hero.r4cov .r4p-herot, body.r4 .r4p-hero.r4cov .r4p-hw > div { text-shadow: 0 1px 6px rgba(17,17,17,.55); }
+body.r4 .r4p-hero.r4cov .r4p-hw > div { background: rgba(17,17,17,.72); border-color: rgba(250,249,246,.16); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+@media (max-width: 900px) {
+  /* phones: the words run the full width, so the shade covers it all */
+  body.r4 .r4p-hero.r4cov > .r4cov-shade { background: linear-gradient(180deg, rgba(17,17,17,.9) 0%, rgba(17,17,17,.82) 60%, rgba(17,17,17,.88) 100%); }
+  body.r4 .r4p-hero.r4cov .r4p-herot { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) { body.r4 .r4p-hero.r4cov > .r4cov-img, body.r4 .r4p-hero.r4cov > .r4cov-shade { transition: none; } }
+body.r4 .r4tv-bar .r4p-btn.r4tv-danger { color: var(--r4p-chg); border-color: var(--r4p-chg); background: var(--r4p-card); }
+body.r4 .r4tv-bar .r4p-btn.r4tv-danger:hover { background: var(--r4p-chg-bg); }
+body.r4 .r4tv-bar .r4tv-barask .r4p-btn.r4tv-danger, body.r4 .r4tv-bar.r4tv-barask .r4p-btn.r4tv-danger { background: var(--r4p-chg); color: var(--r4p-card); }

@@ -42,10 +42,16 @@
   const CHIP = { internal: "wait", client: "rev", wip: "plan", approved: "pub", scheduled: "sch", published: "pub", dropped: "plan" };
   const six = (i) => { try { return sixOf(i); } catch (e) { return "internal"; } };
   const loaded = () => { try { return W.code === S.code && Array.isArray(W.items); } catch (e) { return false; } };
-  const pool = () => { try { return W.items.filter((i) => W.checks || !isCheck(i)); } catch (e) { return []; } };
-  const checksN = () => { try { return W.items.concat(W.dropped || []).filter(isCheck).length; } catch (e) { return 0; } };
+  // [26 Nov 2026] Lee: "why arent all the cards not just in the content page". Every card is on Content, at its stage; our
+  // own checks are just a type ("Our checks", last in the type row). And only real checks count as checks: the page's own
+  // isCheck counted every team card with no kind (old cards carry none), which hid real artwork (329 pieces across all
+  // clients, e.g. "20 Comino in January: variants"). Here a card is a check when its kind is "proof", or it has no kind
+  // and its title says it is one.
+  const CHECK_WORDS = /\b(check|checks|test|tests|proof|screens?|screenshots?|QA|verification|before and after|measure|contrast|layout)\b/i;
+  const chk = (i) => !!i && (i.kind === "proof" || (!i.kind && CHECK_WORDS.test(String(i.title || ""))));
+  const pool = () => { try { return W.items.slice(); } catch (e) { return []; } };
   const byId = (id) => { try { return W.items.find((x) => x.id === id) || (W.dropped || []).find((x) => x.id === id) || null; } catch (e) { return null; } };
-  const typeOfW = (i) => { try { return tileKind(i.kind, i.group_name, i.media || [], i.title) || workType(i) || "Post"; } catch (e) { return "Post"; } };
+  const typeOfW = (i) => { if (chk(i)) return "Our checks"; try { return tileKind(i.kind, i.group_name, i.media || [], i.title) || workType(i) || "Post"; } catch (e) { return "Post"; } };
   const isArt = (i) => typeOfW(i) === "Article";
   const dateOf = (i) => (i.scheduled_for || i.post_date || "").slice(0, 10) || null;
   const PROMO = { organic: "Timeline post", promotional: "Advert", advert: "Advert", ad: "Advert", both: "Timeline post and advert" };
@@ -315,37 +321,35 @@
     const cs = TV.cs; let list = pool();
     if (cs.stage === "link") list = list.filter((i) => (cs.link || []).includes(i.id));
     else if (cs.stage === "ids") list = list.filter((i) => (cs.ids || []).includes(i.id));
-    else if (cs.stage === "dropped") list = (W.dropped || []).filter((i) => W.checks || !isCheck(i));
+    else if (cs.stage === "dropped") list = (W.dropped || []).slice();
     else if (cs.stage !== "all") list = list.filter((i) => six(i) === cs.stage);
     return list;
   }
   function contentPage() {
-    const cs = TV.cs, c = counts(), nChecks = checksN();
+    const cs = TV.cs, c = counts();
     if (cs.stage === "link" && !(cs.link || []).length) cs.stage = "internal";
     const base = shownPool();
-    const types = [...new Set(base.map(typeOfW))].sort();
+    const types = [...new Set(base.map(typeOfW))].sort((a, b) => (a === "Our checks") - (b === "Our checks") || a.localeCompare(b));      // "Our checks" last
     if (cs.type && !types.includes(cs.type)) cs.type = null;
     const list = base.filter((i) => !cs.type || typeOfW(i) === cs.type);
     const root = E("div", { class: "r4p r4tv-content work", id: "work", "data-page": "content" });      // not "r4p-content": the client's search and tour (r4_merge.js, r4_tour.js) look for that
     const redo = () => redraw();
     const chip = (key, label, n) => E("button", { type: "button", class: "r4p-fchip", "aria-pressed": String(cs.stage === key),
       onclick: () => { Object.assign(cs, { stage: key, ids: key === "ids" ? cs.ids : null, link: key === "link" ? cs.link : null, type: null }); redo(); } }, n == null ? label : `${label} · ${n}`);
-    const checksBtn = nChecks || W.checks ? E("button", { type: "button", class: "r4p-fchip r4tv-checks", "aria-pressed": String(!!W.checks), title: "Proof screenshots and checks we made for ourselves",
-      onclick: () => { W.checks = !W.checks; redo(); } }, W.checks ? `Hide our checks · ${nChecks}` : `Show our checks · ${nChecks}`) : null;
     root.append(E("div", { class: "r4p-top" }, E("div", {}, E("h1", { class: "r4p-h1", text: "Content" }),
       E("p", { class: "r4p-sub", text: nw(`Every piece for ${cname()}, at every stage. Only the M7Alpha team sees this view.`) })),
-      E("div", { class: "r4tv-topb" }, checksBtn, ...selTop(list))));
-    const dropped = (W.dropped || []).filter((i) => W.checks || !isCheck(i)).length;
+      E("div", { class: "r4tv-topb" }, ...selTop(list))));
+    const dropped = (W.dropped || []).length;
     root.append(E("div", { class: "r4p-filters", role: "group", "aria-label": "Stage" },
       ...(cs.stage === "link" ? [chip("link", "From your link", (cs.link || []).length)] : []),
       ...(cs.stage === "ids" ? [chip("ids", cs.idsLabel || "Chosen pieces", (cs.ids || []).length)] : []),
       chip("all", "All stages", pool().length), ...ORDER.map((k) => chip(k, LABEL[k], c[k])), dropped ? chip("dropped", "Dropped", dropped) : null));      // Lee, 26 Nov: "All stages" first
     if (types.length > 1) root.append(E("div", { class: "r4p-filters r4tv-types", role: "group", "aria-label": "Type" },
       E("button", { type: "button", class: "r4p-fchip", "aria-pressed": String(!cs.type), onclick: () => { cs.type = null; redo(); } }, "All types"),
-      ...types.map((t) => E("button", { type: "button", class: "r4p-fchip", "aria-pressed": String(cs.type === t), onclick: () => { cs.type = cs.type === t ? null : t; redo(); } }, t))));
+      ...types.map((t) => E("button", { type: "button", class: "r4p-fchip", "aria-pressed": String(cs.type === t), onclick: () => { cs.type = cs.type === t ? null : t; redo(); } }, t === "Our checks" ? `Our checks · ${base.filter(chk).length}` : t))));
     if (!list.length) {
       root.append(E("div", { class: "r4p-card r4p-empty" }, E("b", { text: cs.stage === "internal" ? "Nothing waits for you in Internal review." : "Nothing here right now." }),
-        E("span", { text: nw(cs.stage === "internal" && nChecks && !W.checks ? "Some of our own checks may wait too: “Show our checks” brings them in." : "Pieces show up here as soon as they are uploaded.") }),
+        E("span", { text: nw("Pieces show up here as soon as they are uploaded.") }),
         cs.stage !== "all" ? E("button", { type: "button", class: "r4p-btn r4p-sm", onclick: () => { Object.assign(cs, { stage: "all", type: null }); redo(); } }, "Show every stage") : null));
       return root;
     }
@@ -392,7 +396,7 @@
       n > 1 && !art ? E("span", { class: "r4tv-n", text: "1/" + n }) : null,
       SEL.on ? E("span", { class: "r4tv-tick" + (ticked ? " on" : ""), "aria-hidden": "true", html: ticked ? '<svg viewBox="0 0 16 16"><path d="m3.5 8.4 3 3 6-6.4"/></svg>' : "" }) : null);
     return E("div", { class: (ticked ? "r4tv-on " : "") + (SEL.on ? "r4tv-picking " : "") + "wt st-" + (({ internal: "need", client: "cli", wip: "wip", approved: "ok", scheduled: "sched", published: "pub", dropped: "gone" })[s] || "need") + " r4tv-t" + (art ? " r4tv-wide" : "") + (gone ? " gone" : ""),
-      "data-id": i.id, title: [i.title, LABEL[s] + (i.noclient ? " (skipped the client)" : ""), isCheck(i) ? "our own check" : null].filter(Boolean).join("\n"),
+      "data-id": i.id, title: [i.title, LABEL[s] + (i.noclient ? " (skipped the client)" : ""), chk(i) ? "our own check" : null].filter(Boolean).join("\n"),
       oncontextmenu: (e) => { e.preventDefault(); if (SEL.on) return; try { workMenu(i, e.currentTarget); } catch (x) {} } },
       // Lee, 26 Nov 2026: the stage label sits to the right of the post type, off the picture; it wraps under the type when
       // the line is too long for the tile
@@ -406,10 +410,14 @@
   // own workRun once per piece, one after another (the same save the single button makes), so N ticked pieces make
   // exactly N single saves. A piece that fails does not stop the others and stays ticked. ----------
   const SEL = { on: false, ids: new Set(), phase: "", kind: null, k: 0, n: 0, result: null };
-  const SAY = { move: "Move to client review", skip: "Approve, skip client", ok: "Approve", pull: "Pull back from client review" };
+  // Remove and Bring back (Lee, 26 Nov 2026: "so I would be able to hide/remove cards with ease"): the page's own Drop and
+  // Put back (workRun "drop" / "back"). Nothing is deleted: a dropped piece waits under Dropped and can come back.
+  const SAY = { move: "Move to client review", skip: "Approve, skip client", ok: "Approve", pull: "Pull back from client review", drop: "Remove", back: "Bring back" };
   const ONLYFOR = { move: "is only for pieces in Internal review that are for the client", skip: "is only for pieces in Internal review that are for the client",
-    ok: "is only for team-only pieces", pull: "is only for pieces in Client review" };
-  const DOING = { move: "Sending", skip: "Approving", ok: "Approving", pull: "Pulling back" };
+    ok: "is only for team-only pieces", pull: "is only for pieces in Client review", drop: "is for pieces that are not in Dropped already", back: "is only for pieces in Dropped" };
+  const DOING = { move: "Sending", skip: "Approving", ok: "Approving", pull: "Pulling back", drop: "Removing", back: "Bringing back" };
+  const KINDS = ["move", "skip", "ok", "pull", "drop", "back"];
+  const CAN = (k, i) => { try { if (k === "back") return !!i.dropped_at; if (i.dropped_at) return false; return k === "drop" ? true : WACT[k].can(i); } catch (e) { return false; } };
   function selStart() { if (!canAct()) return; Object.assign(SEL, { on: true, phase: "", result: null }); SEL.ids.clear(); try { R4T && R4T.close(); W.picking = true; } catch (e) {} redraw(); }
   function selEnd() { Object.assign(SEL, { on: false, phase: "", result: null, kind: null }); SEL.ids.clear(); try { W.picking = false; } catch (e) {} if (TV.page === "content") redraw(); }
   function selToggle(id) { if (SEL.phase === "run") return; SEL.ids.has(id) ? SEL.ids.delete(id) : SEL.ids.add(id); if (SEL.phase !== "run") { SEL.phase = ""; SEL.result = null; } redraw(); }
@@ -421,11 +429,21 @@
         allOn ? "Untick all in this stage" : TV.cs.stage === "all" ? "Select all shown" : "Select all in this stage"),
       E("button", { type: "button", class: "r4p-fchip r4tv-selx", disabled: SEL.phase === "run", onclick: selEnd }, "Cancel")];
   }
-  const picked = () => [...SEL.ids].map(byId).filter((i) => i && !i.dropped_at);
+  const picked = () => [...SEL.ids].map(byId).filter(Boolean);
   function selBar() {
     const list = picked(), n = list.length, who = cname();
     const bar = E("div", { class: "r4tv-bar", role: "region", "aria-label": "Act on the ticked pieces", "aria-live": "polite" });
     const count = E("b", { class: "r4tv-barn", text: n ? `${n} selected` : "Tick the pieces to act on" });
+    if (SEL.phase === "ask" && SEL.kind === "drop") {
+      bar.classList.add("r4tv-barask");
+      const atClient = list.filter((i) => i.stage === "needs_client").length;
+      bar.append(E("div", { class: "r4tv-bart" }, E("b", { text: `Remove ${plural(n, "piece", "pieces")}?` }),
+        E("span", { text: nw(`They move to Dropped, and you can bring them back from there. Nothing is deleted, and the sessions are asked to archive the frames in Figma.`
+          + (atClient ? ` ${atClient === 1 ? "One of them is" : atClient + " of them are"} with ${who} right now: removing takes ${atClient === 1 ? "it" : "them"} off their page.` : "")) })),
+        E("div", { class: "r4tv-bara" }, E("button", { type: "button", class: "r4p-btn r4tv-danger", "data-act": "bulk-yes", onclick: () => selRun("drop") }, `Yes, remove ${n}`),
+          E("button", { type: "button", class: "r4p-btn", "data-act": "bulk-no", onclick: () => { SEL.phase = ""; redraw(); } }, "Cancel")));
+      return bar;
+    }
     if (SEL.phase === "ask") {
       bar.classList.add("r4tv-barask");
       bar.append(E("div", { class: "r4tv-bart" }, E("b", { text: `Send ${plural(n, "piece", "pieces")} to ${who} for review?` }),
@@ -440,7 +458,8 @@
       return bar;
     }
     if (SEL.result) {
-      const r = SEL.result, did = { move: `Sent ${r.ok} of ${r.n} to ${who}`, skip: `Approved ${r.ok} of ${r.n}, client skipped`, ok: `Approved ${r.ok} of ${r.n}`, pull: `Pulled back ${r.ok} of ${r.n} from client review` }[r.kind];
+      const r = SEL.result, did = { move: `Sent ${r.ok} of ${r.n} to ${who}`, skip: `Approved ${r.ok} of ${r.n}, client skipped`, ok: `Approved ${r.ok} of ${r.n}`, pull: `Pulled back ${r.ok} of ${r.n} from client review`,
+        drop: `Removed ${r.ok} of ${r.n}: ${r.ok === 1 ? "it is" : "they are"} under Dropped now`, back: `Brought back ${r.ok} of ${r.n}` }[r.kind];
       bar.classList.add(r.bad.length ? "r4tv-barbad" : "r4tv-bargood");
       bar.append(E("div", { class: "r4tv-bart" }, E("b", { text: did + "." }),
         r.bad.length ? E("span", { text: nw(`${r.bad.length === 1 ? "This one didn't go" : `These ${r.bad.length} didn't go`}, so ${r.bad.length === 1 ? "it is" : "they are"} still ticked: ` + r.bad.map((x) => `“${short(x.title)}” (${x.why})`).join("; ") + ".") })
@@ -448,12 +467,12 @@
         E("div", { class: "r4tv-bara" }, E("button", { type: "button", class: "r4p-btn r4p-dark", "data-act": "bulk-done", onclick: () => { SEL.result = null; if (!SEL.ids.size) selEnd(); else redraw(); } }, r.bad.length ? "OK" : "Done")));
       return bar;
     }
-    const kinds = ["move", "skip", "ok", "pull"].map((k) => [k, list.filter((i) => { try { return WACT[k].can(i); } catch (e) { return false; } }).length]).filter(([, c]) => c > 0);
+    const kinds = KINDS.map((k) => [k, list.filter((i) => CAN(k, i)).length]).filter(([, c]) => c > 0);
     // one line per reason: "Move to client review" and "Approve, skip client" share theirs
     const grp = new Map(); kinds.filter(([, c]) => c < n).forEach(([k, c]) => { const g = ONLYFOR[k] + "|" + c; if (!grp.has(g)) grp.set(g, { ks: [], c, why: ONLYFOR[k] }); grp.get(g).ks.push(k); });
     const why = [...grp.values()].map((g) => `${g.ks.map((k) => "“" + SAY[k] + "”").join(" and ")} ${g.ks.length > 1 ? g.why.replace(/^is /, "are ") : g.why}: ${g.c} of ${n} ticked ${g.c === 1 ? "fits" : "fit"}.`);
-    const acts = kinds.map(([k, c], j) => E("button", { type: "button", class: "r4p-btn" + (j === 0 && c === n ? " r4p-dark" : ""), "data-act": "bulk-" + k, disabled: c < n,
-      title: c < n ? `${SAY[k]} ${ONLYFOR[k]}` : `${SAY[k]}: ${plural(n, "piece", "pieces")}`, onclick: () => { if (k === "move") { SEL.phase = "ask"; redraw(); } else selRun(k); } }, SAY[k]));
+    const acts = kinds.map(([k, c], j) => E("button", { type: "button", class: "r4p-btn" + (k === "drop" ? " r4tv-danger" : j === 0 && c === n ? " r4p-dark" : ""), "data-act": "bulk-" + k, disabled: c < n,
+      title: c < n ? `${SAY[k]} ${ONLYFOR[k]}` : `${SAY[k]}: ${plural(n, "piece", "pieces")}`, onclick: () => { if (k === "move" || k === "drop") { SEL.phase = "ask"; SEL.kind = k; redraw(); } else selRun(k); } }, SAY[k]));
     if (n && !kinds.length) why.push("None of the actions fits these pieces at their stage.");
     bar.append(count, E("div", { class: "r4tv-bara" }, ...acts));
     if (why.length) bar.append(E("p", { class: "r4tv-barw", text: why.map(nw).join(" ") }));
@@ -461,7 +480,7 @@
   }
   async function selRun(kind) {
     if (!canAct() || SEL.phase === "run") return;
-    const list = picked().filter((i) => { try { return WACT[kind].can(i); } catch (e) { return false; } });
+    const list = picked().filter((i) => CAN(kind, i));
     if (!list.length) return;
     Object.assign(SEL, { phase: "run", kind, k: 0, n: list.length, result: null });
     document.body.classList.add("r4tv-running");      // the page's own "Saving…" messages stay out of the way: the bar shows the progress
@@ -473,7 +492,13 @@
       for (let t = 0; t < 100 && W.busy; t++) await new Promise((ok) => setTimeout(ok, 100));      // the page saves one thing at a time
       if (toastEl) toastEl.textContent = "";
       const now = byId(p.id) || p;
-      try { await workRun(kind, [now], {}); } catch (e) {}
+      try {
+        // Drop asks twice with the browser's own box (and again for a piece at Client review); the bar asked already, once
+        // for the whole batch, so those boxes say yes. They are asked before the page's first wait, so the box is put back at once
+        const c0 = window.confirm; if (kind === "drop") window.confirm = () => true;
+        let run; try { run = workRun(kind, [now], {}); } finally { window.confirm = c0; }
+        await run;
+      } catch (e) {}
       try { W.picking = true; } catch (e) {}      // the page's own save turns "select several" off after each one
       const told = (toastEl && toastEl.textContent || "").trim();
       if (!told || /^(That stopped|Nothing to do)/.test(told)) {
@@ -771,7 +796,7 @@
   function infoBox(i) {
     const rows = [["Title", i.title], ["Version", String(i.version || 1)], ["Batch", i.batch || ""], ["Uploaded", i.created_at ? dayLabel(i.created_at) : ""],
       ["Date", i.post_date ? dayLabel(i.post_date) + (i.date_confirmed === false ? " (to be confirmed)" : "") : ""], ["Subject", i.subject || ""],
-      ["Our check", isCheck(i) ? "Yes, a proof or check we made for ourselves" : ""], ["Why dropped", i.dropped_why || ""]].filter((r) => r[1]);
+      ["Our check", chk(i) ? "Yes, a proof or check we made for ourselves" : ""], ["Why dropped", i.dropped_why || ""]].filter((r) => r[1]);
     return E("section", { class: "r4c-box r4c-details r4tv-info", "aria-label": "More info" }, E("h3", { text: "More info" }), E("dl", { class: "r4c-dl" }, ...rows.flatMap(([a, b]) => [E("dt", { text: a }), E("dd", { text: b })])));
   }
   function detailsBox(i) {
@@ -940,8 +965,35 @@
   // our Client view: leave our card and grown tile behind
   try { if (typeof setClientView === "function") { const b = setClientView; setClientView = function (on) { if (on) { closeCard({ quiet: true }); document.body.classList.remove("r4tv"); } return b.apply(this, arguments); }; } } catch (e) {}
 
+  // ---------- the cover photo on Home's "Next for you" card (Lee, 26 Nov 2026: "a cover photo like the cards in the
+  // content page (but very wide landscape)"), for clients and for us, laptops and phones. One picture per client, at a
+  // fixed address next to the page: covers/<client slug>.jpg (2400 x 750). No file, or it fails: the card stays as it
+  // was (black). The picture is fetched first and faded in only once it has loaded, so nothing broken ever shows. ----------
+  const COV = new Map();          // slug -> true | false, once known
+  function coverFor(slug) {
+    if (COV.has(slug)) return Promise.resolve(COV.get(slug));
+    return new Promise((done) => { const im = new Image(); im.onload = () => done(im.naturalWidth > 0); im.onerror = () => done(false); im.src = "covers/" + encodeURIComponent(slug) + ".jpg"; })
+      .then((ok) => { COV.set(slug, ok); return ok; });
+  }
+  function coverHeroes() {
+    const list = document.querySelectorAll("#app .r4p-hero:not([data-cov])"); if (!list.length) return;
+    let slug = ""; try { slug = String((S.data && S.data.client && S.data.client.slug) || "").trim(); } catch (e) {}
+    list.forEach((hero) => {
+      hero.dataset.cov = slug || "-"; if (!slug || !/^[\w-]+$/.test(slug)) return;
+      const known = COV.get(slug) === true;
+      coverFor(slug).then((ok) => {
+        if (!ok || !hero.isConnected || hero.querySelector(".r4cov-img")) return;
+        const img = document.createElement("img"); img.className = "r4cov-img"; img.alt = ""; img.decoding = "async"; img.src = "covers/" + encodeURIComponent(slug) + ".jpg";
+        const shade = document.createElement("span"); shade.className = "r4cov-shade"; shade.setAttribute("aria-hidden", "true");
+        hero.prepend(img, shade); hero.classList.add("r4cov");
+        if (known) hero.classList.add("r4cov-in"); else requestAnimationFrame(() => requestAnimationFrame(() => hero.classList.add("r4cov-in")));      // a redraw shows it at once; the first time it fades in
+      });
+    });
+  }
+  try { new MutationObserver(coverHeroes).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+
   window.R4TV = {
-    on: teamOn, go, content, select: () => ({ on: SEL.on, ids: [...SEL.ids], phase: SEL.phase, k: SEL.k, n: SEL.n, result: SEL.result }), open: (id, o) => open(id, o), close: () => closeCard(),
+    on: teamOn, go, content, isCheck: (i) => chk(i), select: () => ({ on: SEL.on, ids: [...SEL.ids], phase: SEL.phase, k: SEL.k, n: SEL.n, result: SEL.result }), open: (id, o) => open(id, o), close: () => closeCard(),
     state: () => ({ page: R4.page, tab: S.tab, cs: Object.assign({}, TV.cs), card: TV.card ? { id: TV.card.id, run: TV.card.run.length, mode: TV.card.mode, flash: TV.card.flash } : null, loaded: loaded() }),
   };
   // the page may already be drawn as the team (a reload): draw once more now that this file is here
