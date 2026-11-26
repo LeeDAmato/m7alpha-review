@@ -1,0 +1,37 @@
+/* [PART R4-merge, 26 Nov 2026] Release 4: the Library merged into Content (r4_merge.js). Everything under body.r4.
+   Content's search box and type buttons sit in a second line under Content's own filter buttons and use their look
+   (.r4p-fchip, Nexus colours from r4_pages.css). The side panel's Download buttons use the card's own buttons (.r4c-btn). */
+
+/* ---------- Content: the search box and the type buttons ---------- */
+body.r4 .r4p-content .r4m-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: -10px 0 18px; }
+body.r4 .r4m-sw { flex: none; align-self: center; }
+body.r4 .r4m-search { position: relative; display: flex; align-items: center; width: 300px; height: 40px;
+  background: var(--r4p-card); border: 1px solid var(--r4p-line); border-radius: 12px; cursor: text; }
+body.r4 .r4m-bar .r4m-search { width: 260px; height: 34px; border-radius: 10px; }
+body.r4 .r4m-search:hover { border-color: var(--r4p-ink2); }
+body.r4 .r4m-search:focus-within { border-color: var(--r4p-ink); box-shadow: 0 0 0 3px var(--r4p-limew); }
+body.r4 .r4m-si { position: absolute; left: 11px; top: 50%; width: 16px; height: 16px; margin-top: -8px; color: var(--r4p-ink2); pointer-events: none; }
+body.r4 .r4m-si svg, body.r4 .r4m-x svg { display: block; width: 100%; height: 100%; }
+body.r4 .r4m-search .r4m-q { -webkit-appearance: none; appearance: none; box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 0 34px 0 35px;
+  border: 0; outline: none; background: transparent; box-shadow: none; border-radius: 10px; font: 500 13.5px/1 var(--r4-font, Inter, system-ui, sans-serif); color: var(--r4p-ink); }
+body.r4 .r4m-search .r4m-q::placeholder { color: var(--r4p-lab); opacity: 1; font-weight: 400; }
+body.r4 .r4m-search .r4m-q::-webkit-search-cancel-button, body.r4 .r4m-search .r4m-q::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+body.r4 .r4m-search .r4m-q:focus-visible { outline: none; }
+body.r4 .r4m-x { position: absolute; right: 5px; top: 50%; width: 24px; height: 24px; margin-top: -12px; padding: 4px; border: 0; border-radius: 7px;
+  background: var(--r4p-inner); color: var(--r4p-ink2) !important; display: grid; place-items: center; cursor: pointer; }
+body.r4 .r4m-x:hover { background: var(--r4p-sel); color: var(--r4p-ink) !important; }
+body.r4 .r4m-x[hidden] { display: none !important; }
+body.r4 .r4m-types { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 0; min-width: 300px; }
+body.r4 .r4m-n { position: absolute; right: 34px; top: 50%; transform: translateY(-50%); font-size: 12.5px; font-weight: 500; color: var(--r4p-ink2); white-space: nowrap; pointer-events: none; }
+body.r4 .r4m-n:empty { display: none; }
+body.r4 .r4m-search.r4m-hasn .r4m-q { padding-right: 96px; }
+body.r4 .r4m-sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+body.r4 .r4m-empty { margin-bottom: 24px; }
+
+/* ---------- the side panel: Download ---------- */
+body.r4 .r4c-root .r4m-dl { flex: none; }
+body.r4 .r4c-root .r4m-dl1 { width: 100%; height: 40px; font-size: 14px; }
+body.r4 .r4c-root .r4m-dlb .r4c-ic { display: inline-flex; width: 16px; height: 16px; }
+body.r4 .r4c-root .r4m-dlb .r4c-ic svg { width: 16px; height: 16px; display: block; }
+body.r4 .r4c-root .r4m-dlh { margin: -4px 0 10px; }
+body.r4 .r4c-root .r4m-dlrow { display: flex; flex-wrap: wrap; gap: 8px; }

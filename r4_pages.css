@@ -1,0 +1,314 @@
+/* [PART R4-pages, 26 Nov 2026] Release 4: Home, Content and Calendar (laptop, client view). Owner: Builder B.
+   Everything is under body.r4. Nexus colours (light and dark) from R4_PLAN.md. Pure white #FFFFFF cards are allowed in R4. */
+body.r4 {
+  --r4p-frame: #F6F6F5; --r4p-card: #FFFFFF; --r4p-inner: #F4F4F2; --r4p-sel: #EDEDEB; --r4p-line: #EAEAE7;
+  --r4p-ink: #111111; --r4p-ink2: #5A5A5A; --r4p-lab: #6D6D6D; --r4p-lime: #8CC63F; --r4p-limew: rgba(140, 198, 63, .16); --r4p-limeb: rgba(110, 160, 45, .55);
+  --r4p-btn: #111111; --r4p-btnink: #F2F2F2; --r4p-hero: #111111; --r4p-herob: #111111; --r4p-heroin: #1E1E1E; --r4p-heroinb: #2B2B2B;
+  --r4p-shadow: 0 1px 2px rgba(17, 17, 17, .05); --r4p-popsh: 0 24px 60px rgba(17, 17, 17, .22), 0 2px 8px rgba(17, 17, 17, .08);
+  --r4p-rev-bg: #FBF3D0; --r4p-rev: #6B5200; --r4p-wait-bg: #FDE9D9; --r4p-wait: #8A3D0C; --r4p-chg-bg: #FBE4E2; --r4p-chg: #8A1C12;
+  --r4p-sch-bg: #E3EEFB; --r4p-sch: #1D4E89; --r4p-pub-bg: #E6F4D7; --r4p-pub: #365E12; --r4p-type-bg: #EEE9F8; --r4p-type: #4B2E83;
+  --r4p-dot-wait: #E0893F; --r4p-dot-pub: #7CB342; --r4p-dot-sch: #4A8FDB; --r4p-dot-chg: #D9534A; --r4p-dot-plan: #BDBDBA;
+}
+body.r4.night {
+  --r4p-frame: #101010; --r4p-card: #191919; --r4p-inner: #202020; --r4p-sel: #2B2B2B; --r4p-line: #272727;
+  --r4p-ink: #F2F2F2; --r4p-ink2: #B8B8B8; --r4p-lab: #9C9C9C; --r4p-limew: rgba(140, 198, 63, .16); --r4p-limeb: rgba(140, 198, 63, .45);
+  --r4p-btn: #F2F2F2; --r4p-btnink: #111111; --r4p-hero: #1A1A1A; --r4p-herob: #2B2B2B; --r4p-heroin: #242424; --r4p-heroinb: #333333;
+  --r4p-shadow: none; --r4p-popsh: 0 24px 60px rgba(5, 5, 5, .7), 0 0 0 1px #2B2B2B;
+  --r4p-rev-bg: #3A3010; --r4p-rev: #F2D36B; --r4p-wait-bg: #3D2414; --r4p-wait: #F5B07A; --r4p-chg-bg: #3D1714; --r4p-chg: #F5A39A;
+  --r4p-sch-bg: #172B45; --r4p-sch: #9CC3F2; --r4p-pub-bg: #22351A; --r4p-pub: #A8D97A; --r4p-type-bg: #2A2340; --r4p-type: #C9B8F2;
+  --r4p-dot-plan: #5A5A5A;
+}
+body.r4 .r4p { font-family: var(--r4-font, Inter, system-ui, -apple-system, "Segoe UI", sans-serif); color: var(--r4p-ink); font-size: 14px; line-height: 1.4; }
+body.r4 .r4p:not(.r4p-pop) { padding: 0 0 16px; box-sizing: border-box; text-align: left; }      /* the shell's frame (#app) gives the 26 / 30 px padding */
+body.r4 .r4p *, body.r4 .r4p *::before, body.r4 .r4p *::after { box-sizing: border-box; }
+body.r4 :where(.r4p) :where(button) { font: inherit; color: inherit; cursor: pointer; margin: 0; }      /* low weight, so each button's own size and weight win */
+body.r4 .r4p [hidden] { display: none !important; }
+body.r4 .r4p :focus-visible { outline: 2px solid var(--r4p-lime); outline-offset: 2px; }
+body.r4 .r4p-sp { flex: 1; }
+
+/* top of each page */
+body.r4 .r4p-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+body.r4 .r4p-h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; margin: 0; line-height: 1.2; color: var(--r4p-ink); }
+body.r4 .r4p-sub { color: var(--r4p-ink2); font-size: 14px; margin: 4px 0 0; }
+body.r4 .r4p-datebox { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 12px; background: var(--r4p-card); border: 1px solid var(--r4p-line); font-weight: 600; flex: none; }
+
+/* buttons and labels */
+body.r4 .r4p-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 12px; font-weight: 600; font-size: 14px;
+  border: 1px solid var(--r4p-line); background: var(--r4p-card); color: var(--r4p-ink); white-space: nowrap; flex: none; }
+body.r4 .r4p-btn:hover { border-color: var(--r4p-ink2); }
+body.r4 .r4p-btn.r4p-dark { background: var(--r4p-btn); color: var(--r4p-btnink); border-color: var(--r4p-btn); }
+body.r4 .r4p-btn.r4p-dark:hover { opacity: .9; }
+body.r4 .r4p-btn.r4p-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
+body.r4 .r4p-link { background: none; border: 0; padding: 0; font-weight: 600; font-size: 13px; color: var(--r4p-ink); }
+body.r4 .r4p-link:hover { text-decoration: underline; }
+body.r4 .r4p-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; line-height: 1; }
+body.r4 .r4p-c-rev { background: var(--r4p-rev-bg); color: var(--r4p-rev); }
+body.r4 .r4p-c-wait { background: var(--r4p-wait-bg); color: var(--r4p-wait); }
+body.r4 .r4p-c-chg { background: var(--r4p-chg-bg); color: var(--r4p-chg); }
+body.r4 .r4p-c-sch { background: var(--r4p-sch-bg); color: var(--r4p-sch); }
+body.r4 .r4p-c-pub { background: var(--r4p-pub-bg); color: var(--r4p-pub); }
+body.r4 .r4p-c-plan { background: var(--r4p-sel); color: var(--r4p-ink2); }
+body.r4 .r4p-c-type { background: var(--r4p-type-bg); color: var(--r4p-type); }
+body.r4 .r4p-c-lime { background: var(--r4p-lime); color: #111111; }
+body.r4 .r4p-c-opt { background: #F6F6F5; color: #111111; }
+body.r4 .r4p-card { background: var(--r4p-card); border: 1px solid var(--r4p-line); border-radius: 16px; box-shadow: var(--r4p-shadow); }
+body.r4 .r4p-sec { display: flex; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 600; color: var(--r4p-lab); text-transform: uppercase; letter-spacing: .06em; margin: 4px 0 10px; }
+body.r4 .r4p-sec em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12.5px; margin-left: auto; }
+body.r4 .r4p-right { text-align: right; margin-top: 10px; }
+body.r4 .r4p-empty { padding: 28px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+body.r4 .r4p-empty b { font-size: 16px; }
+body.r4 .r4p-empty span { color: var(--r4p-ink2); }
+
+/* channel icons: 18 px rounded squares (R4P.channelIcon) */
+body.r4 .r4p-chs { display: inline-flex; align-items: center; gap: 3px; flex: none; }
+body.r4 .r4p-ch { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; color: #FAF9F6; font-size: 10.5px; font-weight: 700; line-height: 1;
+  flex: none; font-family: Inter, system-ui, sans-serif; letter-spacing: -.02em; }
+body.r4 .r4p-ch svg { width: 14px; height: 14px; fill: none; stroke: #FAF9F6; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+body.r4 .r4p-ch svg .f { fill: #FAF9F6; stroke: none; }
+body.r4 .r4p-ch-ig { background: linear-gradient(45deg, #F2A03D, #D6337A 55%, #7A3FC4); }
+body.r4 .r4p-ch-fb { background: #1877F2; font-size: 12px; }
+body.r4 .r4p-ch-li { background: #0A66C2; }
+body.r4 .r4p-ch-tt { background: #111111; box-shadow: inset 0 0 0 1px #3A3A3A; }
+body.r4 .r4p-ch-gg { background: #E3EEFB; color: #1D4E89; }
+body.r4 .r4p-ch-yt { background: #D93025; }
+body.r4 .r4p-ch-xx { background: var(--r4p-sel); color: var(--r4p-ink); }
+
+/* ---------- Home ---------- */
+/* [main session, 26 Nov 2026] the first card in the left column, taller (Lee's red box): words on top, the small boxes and
+   Start along the foot. The small boxes hide when the card is too narrow for them (a container query on the card). */
+body.r4 .r4p-hero { background: var(--r4p-hero); border: 1px solid var(--r4p-herob); border-radius: 20px; padding: 26px 26px 24px 28px; display: flex; flex-direction: column;
+  justify-content: space-between; gap: 22px; min-height: 236px; box-sizing: border-box; color: #F2F2F2; margin-bottom: 22px; container-type: inline-size; }
+body.r4 .r4p-herot { min-width: 0; }
+body.r4 .r4p-herobot { display: flex; align-items: flex-end; gap: 16px; }
+body.r4 .r4p-herobot .r4p-hw { flex: 1; min-width: 0; }
+body.r4 .r4p-herobot .r4p-go { margin-left: auto; }
+@container (max-width: 540px) { body.r4 .r4p-herobot .r4p-hw { visibility: hidden; } }
+body.r4 .r4p-k { font-size: 12.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--r4p-lime); }
+body.r4 .r4p-ask { font-size: 27px; font-weight: 700; margin: 8px 0; letter-spacing: -.01em; color: #F2F2F2; line-height: 1.22; max-width: 640px; }
+body.r4 .r4p-herom { font-size: 14px; color: #B8B8B8; }
+body.r4 .r4p-hw { display: flex; gap: 8px; flex: none; }
+body.r4 .r4p-hw div { flex: 0 1 172px; min-width: 104px; box-sizing: border-box; background: var(--r4p-heroin); border: 1px solid var(--r4p-heroinb); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; color: #B8B8B8; line-height: 1.35; }
+body.r4 .r4p-hw b { display: block; color: #F2F2F2; font-size: 13px; margin-bottom: 2px; }
+body.r4 .r4p-hw span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.r4 .r4p-go { display: inline-flex; align-items: center; gap: 14px; height: 56px; padding: 0 8px 0 26px; border-radius: 99px; background: var(--r4p-lime); color: #111111 !important; font-weight: 700; font-size: 17px; flex: none; border: 0; }
+body.r4 .r4p-go i { width: 40px; height: 40px; border-radius: 50%; background: #111111; color: var(--r4p-lime); display: grid; place-items: center; font-style: normal; font-size: 21px; line-height: 1; padding-bottom: 2px; }
+body.r4 .r4p-go:hover { filter: brightness(1.05); }
+body.r4 .r4p-hero.r4p-calm { background: var(--r4p-card); border-color: var(--r4p-line); color: var(--r4p-ink); padding: 22px 28px; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 0; }
+body.r4 .r4p-hero.r4p-calm .r4p-ask { font-size: 24px; color: var(--r4p-ink); margin: 6px 0 4px; }
+body.r4 .r4p-hero.r4p-calm .r4p-herom { color: var(--r4p-ink2); }
+body.r4 .r4p-hero.r4p-calm .r4p-k { color: var(--r4p-pub); }
+body.r4 .r4p-tick { width: 52px; height: 52px; border-radius: 50%; background: var(--r4p-limew); display: grid; place-items: center; flex: none; }
+body.r4 .r4p-tick svg { width: 26px; height: 26px; fill: none; stroke: var(--r4p-pub); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+body.r4 .r4p-grid.r4p-even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+body.r4 .r4p-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+body.r4 .r4p-task { display: flex; align-items: center; gap: 16px; padding: 13px 16px; margin-bottom: 10px; cursor: pointer; }
+body.r4 .r4p-task:hover { border-color: #D5D5D1; }
+body.r4.night .r4p-task:hover { border-color: #3A3A3A; }
+body.r4 .r4p-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--r4p-inner); display: grid; place-items: center; flex: none; color: var(--r4p-ink); }
+body.r4 .r4p-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+body.r4 .r4p-taskt { flex: 1; min-width: 0; }
+body.r4 .r4p-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+body.r4 .r4p-taskt b { font-size: 15.5px; margin: 5px 0 2px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+body.r4 .r4p-taskt small { color: var(--r4p-ink2); font-size: 13px; display: block; line-height: 1.4; }
+body.r4 .r4p-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+body.r4 .r4p-kpis.r4p-one { grid-template-columns: 1fr; }
+body.r4 .r4p-kpi { padding: 16px 18px; text-align: left; display: flex; flex-direction: column; align-items: flex-start; }
+body.r4 .r4p-kpi:hover { border-color: #D5D5D1; }
+body.r4.night .r4p-kpi:hover { border-color: #3A3A3A; }
+body.r4 .r4p-kpi small { color: var(--r4p-ink2); font-size: 12.5px; }
+body.r4 .r4p-kpi b { font-size: 30px; font-weight: 700; margin: 4px 0 2px; letter-spacing: -.01em; line-height: 1.15; white-space: nowrap; }
+body.r4 .r4p-soon { padding: 4px 16px; }
+body.r4 .r4p-soon.r4p-none { padding: 18px; color: var(--r4p-ink2); }
+body.r4 .r4p-mini { display: flex; gap: 12px; align-items: center; padding: 10px 0; border: 0; border-top: 1px solid var(--r4p-line); background: none; width: 100%; text-align: left; }
+body.r4 .r4p-mini:first-child { border-top: 0; }
+body.r4 .r4p-mini:hover .r4p-mint > b { text-decoration: underline; }
+body.r4 .r4p-mind { width: 40px; text-align: center; flex: none; }
+body.r4 .r4p-mind b { display: block; font-size: 17px; line-height: 1.2; }
+body.r4 .r4p-mind span { font-size: 11px; color: var(--r4p-lab); text-transform: uppercase; font-weight: 600; }
+body.r4 .r4p-mint { min-width: 0; flex: 1; }
+body.r4 .r4p-mint > b { display: block; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.r4 .r4p-mins { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--r4p-ink2); margin-top: 3px; }
+
+/* ---------- Content ---------- */
+body.r4 .r4p-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 18px; }
+body.r4 .r4p-fchip { height: 34px; padding: 0 14px; border-radius: 10px; background: var(--r4p-card); border: 1px solid var(--r4p-line); display: inline-flex; align-items: center; gap: 7px;
+  font-weight: 500; font-size: 13.5px; color: var(--r4p-ink2) !important; }
+body.r4 .r4p-fchip:hover { border-color: var(--r4p-ink2); }
+body.r4 .r4p-fchip[aria-pressed="true"] { background: var(--r4p-btn); color: var(--r4p-btnink) !important; border-color: var(--r4p-btn); }
+body.r4 .r4p-above { display: inline-flex; align-items: center; gap: 2px; background: none; border: 0; padding: 0; margin: -6px 0 10px; font-size: 13px; color: var(--r4p-ink2) !important; }
+body.r4 .r4p-above:hover .r4p-abs { text-decoration: underline; }
+body.r4 .r4p-abs { font-weight: 600; color: var(--r4p-ink); }
+body.r4 .r4p-row { margin-bottom: 24px; position: relative; }
+body.r4 .r4p-row.r4p-lit { background: var(--r4p-limew); border: 1px solid var(--r4p-limeb); border-radius: 18px; padding: 14px 16px 16px; margin: 0 -17px 26px; }
+body.r4 .r4p-lith { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+body.r4 .r4p-lits { font-size: 13px; color: var(--r4p-ink2); flex: 1; }
+body.r4.night .r4p-lits { color: #C4C4C4; }
+body.r4 .r4p-rowh { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+body.r4 .r4p-rowh b { font-size: 17px; font-weight: 700; }
+body.r4 .r4p-rowh small { color: var(--r4p-ink2); font-size: 13px; }
+body.r4.night .r4p-lit .r4p-rowh small { color: #C4C4C4; }
+body.r4 .r4p-rowh .r4p-link { margin-left: auto; }
+body.r4 .r4p-tw { position: relative; }
+body.r4 .r4p-tiles { display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scrollbar-width: none; padding: 2px 2px 4px; margin: -2px -2px 0; align-items: flex-start; }
+body.r4 .r4p-tiles::-webkit-scrollbar { display: none; }
+body.r4 .r4p-tiles.r4p-wrap { flex-wrap: wrap; overflow: visible; row-gap: 18px; }
+body.r4 .r4p-more { position: absolute; top: 85px; width: 40px; height: 40px; border-radius: 50%; background: var(--r4p-card); border: 1px solid var(--r4p-line);
+  display: grid; place-items: center; box-shadow: 0 4px 14px rgba(17, 17, 17, .14); font-size: 20px; line-height: 1; padding-bottom: 2px; z-index: 2; color: var(--r4p-ink) !important; }
+body.r4 .r4p-more.r4p-next { right: -8px; }
+body.r4 .r4p-more.r4p-prev { left: -8px; }
+body.r4 .r4p-tile { flex: none; background: none; border: 0; padding: 0; text-align: left; scroll-snap-align: start; display: flex; flex-direction: column; }
+body.r4 .r4p-tile:hover .r4p-art { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(17, 17, 17, .16); }
+body.r4 .r4p-art { border-radius: 14px; position: relative; overflow: hidden; flex: none; transition: transform .15s ease, box-shadow .15s ease; }
+body.r4 .r4p-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+body.r4 .r4p-artw { position: absolute; left: 14px; right: 14px; bottom: 16px; color: #FAF9F6; font-weight: 700; font-size: 17px; line-height: 1.1; }
+/* [main session, 26 Nov 2026] article tiles (Lee): landscape, the title large in the lower third, left aligned, over a dark
+   shade rising from the bottom (deepest bottom left). Off-black shade (#111214), off-white words; contrast measured. */
+body.r4 .r4p-shade { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(17, 18, 20, .88) 0%, rgba(17, 18, 20, .7) 30%, rgba(17, 18, 20, .25) 60%, rgba(17, 18, 20, 0) 82%),
+    radial-gradient(ellipse 85% 75% at 0% 100%, rgba(17, 18, 20, .4) 0%, rgba(17, 18, 20, 0) 70%); }
+body.r4 .r4p-atl { position: absolute; left: 16px; right: 32px; bottom: 15px; z-index: 1; color: #FAF9F6;
+  font-weight: 800; font-size: 19px; line-height: 1.08; letter-spacing: -.01em; text-align: left; text-wrap: pretty;
+  text-shadow: 0 1px 10px rgba(17, 18, 20, .45); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* [main session, 26 Nov 2026] the grown tile on Content (Lee): the picture alone, 50% bigger (articles 15%), above its
+   neighbours (Lee: posts 100% bigger, articles 50%), its status label hidden; Approve, Comment and Open float under it with nothing behind them. A copy fixed over the page. */
+body.r4 .r4p-hv { position: fixed; z-index: 70; }
+body.r4 .r4p-hv-box { position: relative; border-radius: 16px; overflow: hidden; background: var(--r4p-inner);
+  box-shadow: 0 22px 54px rgba(17, 17, 17, .3), 0 3px 10px rgba(17, 17, 17, .14); }
+body.r4.night .r4p-hv-box { box-shadow: 0 22px 54px rgba(5, 5, 5, .75), 0 0 0 1px #2B2B2B; }
+body.r4 .r4p-hv-pic { all: unset; position: absolute; inset: 0; cursor: pointer; overflow: hidden; }
+body.r4 .r4p-hv-pic:focus-visible { outline: 2px solid #FAF9F6; outline-offset: -4px; }
+body.r4 .r4p-hv-pic .r4p-art, body.r4 .r4p-hv-pic .r4p-pick { border-radius: 0; transition: none; box-shadow: none; }
+body.r4 .r4p-hv-shade { position: absolute; inset: 0; pointer-events: none; }
+/* the picture box is positioned, so without this its big shadow paints over the buttons and greys them */
+body.r4 .r4p-hv-bar { position: relative; z-index: 1; padding-top: 10px; display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+body.r4 .r4p-hv-acts { display: flex; flex-wrap: wrap; gap: 5px; }
+body.r4 .r4p-hv-b { height: 30px; padding: 0 9px; border-radius: 99px; border: 0; background: #FFFFFF; color: #111111; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: -.005em;
+  white-space: nowrap; cursor: pointer; box-shadow: 0 1px 4px rgba(17, 18, 20, .3); }
+body.r4 .r4p-hv-b:hover { background: #EDEDEB; }
+body.r4 .r4p-hv-b.main { background: var(--r4p-lime); color: #111111; }
+body.r4 .r4p-hv-b.main:hover { filter: brightness(1.06); }
+body.r4 .r4p-hv-b:disabled { opacity: .65; cursor: default; }
+body.r4 .r4p-hv-b:focus-visible { outline: 2px solid #FAF9F6; outline-offset: 2px; }
+body.r4 .r4p-hv-done { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 8px; border-radius: 99px; background: #E6F4D7; color: #365E12;
+  font-size: 12.5px; font-weight: 700; box-shadow: 0 1px 4px rgba(17, 18, 20, .3); }
+body.r4 .r4p-hv-done i { width: 18px; height: 18px; display: inline-grid; }
+body.r4 .r4p-hv-done svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+body.r4 .r4p-hv-msg { margin: 0; max-width: 100%; box-sizing: border-box; font-size: 12px; font-weight: 600; line-height: 1.35; color: #FAF9F6; background: rgba(138, 28, 18, .94); padding: 5px 9px; border-radius: 8px; }
+body.r4 .r4p-hv-panel { width: 100%; display: flex; flex-direction: column; gap: 7px; }
+body.r4 .r4p-hv-ta { width: 100%; box-sizing: border-box; min-height: 74px; border-radius: 10px; border: 1px solid var(--r4p-line); background: #FFFFFF; box-shadow: 0 2px 8px rgba(17, 18, 20, .12); color: #111111; padding: 8px 10px;
+  font: inherit; font-size: 13px; line-height: 1.4; resize: none; }
+body.r4 .r4p-hv-ta::placeholder { color: #6D6D6D; }
+/* [review2 fix, 26 Nov] the comment box's note ("A comment asks us to look at this piece again"), on white like the buttons,
+   so it reads over anything behind the card (#5A5A5A on #FFFFFF = 6.9:1); the grown pick one's "Option A / B" labels at
+   about their normal size (the copy is drawn twice the size) */
+body.r4 .r4p-hv-hint { margin: 0; max-width: 100%; box-sizing: border-box; font-size: 12px; font-weight: 600; line-height: 1.35; color: #5A5A5A; background: #FFFFFF; padding: 5px 9px; border-radius: 8px; box-shadow: 0 1px 4px rgba(17, 18, 20, .2); }
+body.r4 .r4p-hv-pic .r4p-picko .r4p-c-opt { transform: scale(.55); transform-origin: left bottom; }
+body.r4 .r4p-hv-ta:focus { outline: 2px solid var(--r4p-lime); }
+/* articles: the tile's own title and shade are hidden in the copy; the grown card carries title, first line and buttons */
+body.r4 .r4p-hv-art .r4p-hv-pic .r4p-atl, body.r4 .r4p-hv-art .r4p-hv-pic .r4p-shade { display: none; }
+body.r4 .r4p-hv-art .r4p-hv-shade { background: linear-gradient(0deg, rgba(17, 18, 20, .9) 0%, rgba(17, 18, 20, .74) 36%, rgba(17, 18, 20, .26) 68%, rgba(17, 18, 20, 0) 88%); }
+body.r4 .r4p-hv-head { position: absolute; left: 14px; right: 18px; bottom: 13px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+body.r4 .r4p-hv-head b { font-size: 26px; font-weight: 800; line-height: 1.08; letter-spacing: -.01em; color: #FAF9F6; text-shadow: 0 1px 10px rgba(17, 18, 20, .45); }
+body.r4 .r4p-hv-head span { font-size: 14px; line-height: 1.4; color: #EDECE8; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.r4 .r4p-play { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; margin: -21px 0 0 -21px; border-radius: 50%; background: rgba(17, 18, 20, .6); display: grid; place-items: center; }
+body.r4 .r4p-play svg { width: 18px; height: 18px; fill: #FAF9F6; }
+body.r4 .r4p-tl { position: absolute; top: 8px; left: 8px; z-index: 1; }
+body.r4 .r4p-bl { position: absolute; bottom: 10px; left: 10px; z-index: 1; }
+body.r4 .r4p-n { position: absolute; top: 8px; right: 8px; background: rgba(17, 18, 20, .72); color: #FAF9F6; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 6px; z-index: 1; }
+body.r4 .r4p-meta { font-size: 13px; color: var(--r4p-ink2); margin-top: 8px; white-space: nowrap; }
+body.r4.night .r4p-lit .r4p-meta { color: #C4C4C4; }
+body.r4 .r4p-meta b { color: var(--r4p-ink); font-weight: 600; }
+body.r4 .r4p-page { background: var(--r4p-card); border: 1px solid var(--r4p-line); }
+body.r4 .r4p-lns { position: absolute; left: 16px; right: 16px; top: 46px; display: flex; flex-direction: column; gap: 8px; }
+body.r4 .r4p-lns i { display: block; height: 6px; border-radius: 3px; background: var(--r4p-sel); }
+body.r4 .r4p-lns i.w { width: 70%; height: 8px; margin-bottom: 4px; }
+body.r4 .r4p-lns i.s { width: 60%; margin-bottom: 8px; }
+body.r4 .r4p-pick { position: relative; display: flex; gap: 6px; padding: 32px 6px 6px; border-radius: 14px; background: var(--r4p-card); border: 1px solid var(--r4p-line); transition: transform .15s ease, box-shadow .15s ease; }
+body.r4 .r4p-tile:hover .r4p-pick { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(17, 17, 17, .16); }
+body.r4 .r4p-tile:hover .r4p-pick .r4p-art { transform: none; box-shadow: none; }
+body.r4 .r4p-picko { position: relative; }
+body.r4 .r4p-picko .r4p-art { border-radius: 10px; }
+body.r4 .r4p-picko .r4p-c-opt { position: absolute; left: 6px; bottom: 6px; height: 22px; font-size: 11.5px; }
+body.r4 .r4p-pickl { display: none; }
+
+/* ---------- Calendar ---------- */
+body.r4 .r4p-caltop { align-items: flex-start; margin-bottom: 12px; }
+body.r4 .r4p-calnav { display: flex; align-items: center; gap: 10px; flex: none; }
+body.r4 .r4p-rnd { width: 32px; height: 32px; border-radius: 10px; background: var(--r4p-card); border: 1px solid var(--r4p-line); display: grid; place-items: center; font-size: 17px; line-height: 1; padding-bottom: 2px; }
+body.r4 .r4p-rnd:hover { border-color: var(--r4p-ink2); }
+body.r4 .r4p-calmon { font-size: 17px; min-width: 150px; text-align: center; }
+body.r4 .r4p-seg { display: inline-flex; gap: 4px; margin-left: 4px; }
+body.r4 .r4p-segb { height: 32px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--r4p-line); background: var(--r4p-card); font-weight: 600; font-size: 13px; }
+body.r4 .r4p-segb[aria-pressed="true"] { background: var(--r4p-btn); color: var(--r4p-btnink) !important; border-color: var(--r4p-btn); }
+body.r4 .r4p-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--r4p-ink2); margin-bottom: 12px; align-items: center; }
+body.r4 .r4p-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+body.r4 .r4p-legend > .r4p-sp { flex: 1; }
+body.r4 .r4p-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+body.r4 .r4p-dot-wait { background: var(--r4p-dot-wait); } body.r4 .r4p-dot-pub { background: var(--r4p-dot-pub); } body.r4 .r4p-dot-sch { background: var(--r4p-dot-sch); }
+body.r4 .r4p-dot-chg { background: var(--r4p-dot-chg); } body.r4 .r4p-dot-plan { background: var(--r4p-dot-plan); }
+body.r4 .r4p-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--r4p-line); border-radius: 16px; overflow: hidden; background: var(--r4p-card); }
+body.r4 .r4p-calhd { padding: 9px 12px; font-size: 12.5px; color: var(--r4p-lab); font-weight: 600; border-bottom: 1px solid var(--r4p-line); border-right: 1px solid var(--r4p-line); }
+body.r4 .r4p-calhd:nth-child(7n) { border-right: 0; }
+body.r4 .r4p-day { border-right: 1px solid var(--r4p-line); border-bottom: 1px solid var(--r4p-line); padding: 7px; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+body.r4 .r4p-day:nth-child(7n) { border-right: 0; }
+body.r4 .r4p-cal > .r4p-day:nth-last-child(-n+7) { border-bottom: 0; }
+body.r4 .r4p-day.r4p-out { background: var(--r4p-inner); }
+body.r4 .r4p-dn { font-size: 12.5px; font-weight: 600; align-self: flex-start; padding: 1px 6px; margin: 0 0 0 -2px; border-radius: 6px; line-height: 1.35; }
+body.r4 .r4p-out .r4p-dn { color: var(--r4p-lab); font-weight: 500; }
+body.r4 .r4p-today .r4p-dn { background: var(--r4p-btn); color: var(--r4p-btnink); }
+body.r4 .r4p-ev { display: block; width: 100%; min-width: 0; overflow: hidden; text-align: left; border: 1px solid var(--r4p-line); border-left: 3px solid var(--r4p-dot-plan); border-radius: 9px; padding: 5px 7px; background: var(--r4p-card); font-size: 11.5px; line-height: 1.3; }
+body.r4 .r4p-ev:hover { border-color: var(--r4p-ink2); }
+body.r4 .r4p-ev-wait { border-left-color: var(--r4p-dot-wait); } body.r4 .r4p-ev-pub { border-left-color: var(--r4p-dot-pub); } body.r4 .r4p-ev-sch { border-left-color: var(--r4p-dot-sch); }
+body.r4 .r4p-ev-chg { border-left-color: var(--r4p-dot-chg); }
+body.r4 .r4p-evr { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 4px; margin-bottom: 3px; min-width: 0; }
+body.r4 .r4p-evr .r4p-chs { flex-wrap: wrap; }
+body.r4 .r4p-evt { margin-left: auto; color: var(--r4p-ink2); font-variant-numeric: tabular-nums; }
+body.r4 .r4p-ev b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+body.r4 .r4p-ev .r4p-chip { height: 18px; font-size: 10.5px; padding: 0 6px; border-radius: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 18px; vertical-align: top; }
+body.r4 .r4p-moreday { position: static; width: auto; height: 24px; border-radius: 8px; box-shadow: none; font-size: 12px; font-weight: 600; padding: 0 8px; align-self: flex-start; display: inline-flex; align-items: center; }
+body.r4 .r4p-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+body.r4 .r4p-wcol { background: var(--r4p-card); border: 1px solid var(--r4p-line); border-radius: 14px; padding: 10px; min-height: 560px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+body.r4 .r4p-wh { display: flex; align-items: baseline; gap: 8px; padding: 2px 2px 6px; border-bottom: 1px solid var(--r4p-line); margin-bottom: 2px; }
+body.r4 .r4p-wh span { font-size: 12.5px; color: var(--r4p-lab); font-weight: 600; }
+body.r4 .r4p-wh b { font-size: 17px; padding: 0 6px; border-radius: 6px; }
+body.r4 .r4p-wcol.r4p-today .r4p-wh b { background: var(--r4p-btn); color: var(--r4p-btnink); }
+body.r4 .r4p-wcol .r4p-ev b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; font-size: 12.5px; }
+body.r4 .r4p-wnone { font-size: 12.5px; color: var(--r4p-lab); padding: 4px 2px; }
+
+/* the small floating card (Calendar) */
+body.r4 .r4p-pop { position: fixed; z-index: 400; width: 330px; background: var(--r4p-frame); border-radius: 18px; box-shadow: var(--r4p-popsh); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+body.r4 .r4p-poph { display: flex; align-items: center; gap: 6px; }
+body.r4 .r4p-popt { font-size: 16px; font-weight: 700; line-height: 1.3; }
+body.r4 .r4p-pops { font-size: 12.5px; color: var(--r4p-ink2); margin-top: -6px; }
+body.r4 .r4p-pop .r4p-art { border-radius: 12px; }
+body.r4 .r4p-popb { display: flex; gap: 8px; }
+body.r4 .r4p-x { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--r4p-line); background: var(--r4p-card); display: grid; place-items: center; padding: 0; flex: none; margin-left: 4px; }
+body.r4 .r4p-x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+body.r4 .r4p-popd { font-size: 15px; }
+body.r4 .r4p-dayl { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow: auto; }
+
+/* [main session, 26 Nov 2026] narrower laptops: the three small boxes in "Next for you" go first, then Start drops under the
+   words, so the question never squeezes to one word per line (Builder C saw it at 1024 px) */
+/* (the first card's small boxes now hide by the card's own width: see the container query by .r4p-hero) */
+
+/* [review 26 Nov 2026] Calendar on narrower laptops (under 1200 px): every piece stays inside its day. The time hides, the status
+   label hides (the coloured left edge says it, with the legend; the word is in the tooltip and the spoken name), the title may take
+   two lines. */
+@media (max-width: 1199px) {
+  body.r4 .r4p-cal .r4p-evt, body.r4 .r4p-week .r4p-evt { display: none; }
+  body.r4 .r4p-cal .r4p-ev .r4p-chip { display: none; }
+  body.r4 .r4p-cal .r4p-ev b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; margin-bottom: 0; }
+  body.r4 .r4p-ev { padding: 5px 6px; border-left-width: 4px; }
+  body.r4 .r4p-day { padding: 6px 5px; }
+  body.r4 .r4p-calnav { gap: 6px; }
+  body.r4 .r4p-calmon { min-width: 0; font-size: 16px; }
+}
+
+/* [review 26 Nov 2026] Home on narrower laptops (under 1200 px): the tasks take the full width (names on one line, or two at most),
+   then "This month" and "Coming up" side by side under them */
+@media (max-width: 1199px) {
+  body.r4 .r4p-home .r4p-grid { grid-template-columns: minmax(0, 1fr); }
+  body.r4 .r4p-home .r4p-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  body.r4 .r4p-home .r4p-side > :only-child { grid-column: 1 / -1; }
+  body.r4 .r4p-kpi b { font-size: 26px; }
+}

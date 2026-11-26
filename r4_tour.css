@@ -1,0 +1,86 @@
+/* [PART R4-tour, 26 Nov 2026] Release 4: the "How it works" cards (r4_tour.js). Owner: the tour builder.
+   Nexus colours (R4_PLAN.md), written out; the box is pure white by day (allowed in R4), #191919
+   at night; never #000000. Scoped under body.r4. z-index 500: over the opened card (85), the name box (95), the grown
+   tile (400) and Release 3's own tour (300), so nothing can sit on top of the box while it shows. */
+body.r4 .r4t { position: fixed; inset: 0; z-index: 500; cursor: default; font-family: var(--r4-font); -webkit-font-smoothing: antialiased; touch-action: none; }
+body.r4 .r4t *, body.r4 .r4t *::before, body.r4 .r4t *::after { box-sizing: border-box; }
+
+/* the lit parts: a dim layer with a hole cut for each (r4_tour.js draws the shape), and a lime ring round each hole */
+body.r4 .r4t-dim { position: fixed; left: 0; top: 0; display: block; overflow: visible; pointer-events: none; opacity: 0; transition: opacity .16s ease-out; }
+body.r4 .r4t-dim path { fill: rgba(17, 17, 17, .56); }
+body.r4.night .r4t-dim path { fill: rgba(5, 5, 5, .74); }
+body.r4 .r4t.r4t-ready .r4t-dim { opacity: 1; }
+body.r4 .r4t-ring { position: fixed; pointer-events: none; border-radius: 14px; box-shadow: 0 0 0 2px #8CC63F, 0 0 0 7px rgba(140, 198, 63, .22); animation: r4tRing .22s ease-out; }
+body.r4.night .r4t-ring { box-shadow: 0 0 0 2px #8CC63F, 0 0 0 7px rgba(140, 198, 63, .2); }
+@keyframes r4tRing { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
+
+/* the box of words */
+body.r4 .r4t-tip { position: fixed; left: 50%; top: 50%; width: 360px; max-width: calc(100vw - 28px); padding: 16px 18px 16px 20px; opacity: 0;
+  background: #FFFFFF; color: #111111; border: 1px solid #EAEAE7; border-radius: 18px; text-align: left;
+  box-shadow: 0 22px 60px rgba(17, 17, 17, .30), 0 2px 8px rgba(17, 17, 17, .10); }
+body.r4.night .r4t-tip { background: #191919; color: #F2F2F2; border-color: #2B2B2B; box-shadow: 0 22px 60px rgba(5, 5, 5, .7), 0 0 0 1px #2B2B2B; }
+body.r4 .r4t.r4t-ready .r4t-tip { opacity: 1; }
+body.r4 .r4t-tip.r4t-in { animation: r4tIn .18s ease-out; }
+body.r4 .r4t-tip.r4t-nudge { animation: r4tNudge .32s ease-in-out; }
+@keyframes r4tIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes r4tNudge { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+body.r4 .r4t-top { display: flex; align-items: center; gap: 10px; margin: 0 -6px 8px 0; }
+body.r4 .r4t-n { font-size: 12.5px; font-weight: 600; line-height: 1; color: #5A5A5A; white-space: nowrap; }
+body.r4.night .r4t-n { color: #B8B8B8; }
+body.r4 .r4t-dots { display: inline-flex; align-items: center; gap: 5px; }
+body.r4 .r4t-dots .r4t-dot { display: block; width: 6px; height: 6px; margin: 0; padding: 0; border: 0; border-radius: 3px; box-shadow: none; background: #CFCFCA; transition: width .2s ease, background-color .2s ease; }
+body.r4 .r4t-dots .r4t-dot-done { background: #8A8A8A; }
+body.r4 .r4t-dots .r4t-dot-on { width: 18px; background: #111111; }
+body.r4.night .r4t-dots .r4t-dot { background: #3E3E3E; }
+body.r4.night .r4t-dots .r4t-dot-done { background: #8A8A8A; }
+body.r4.night .r4t-dots .r4t-dot-on { background: #F2F2F2; }
+body.r4 .r4t-sp { flex: 1; }
+body.r4 .r4t-x { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: #5A5A5A; cursor: pointer; display: grid; place-items: center; flex: none; }
+body.r4 .r4t-x svg { width: 18px; height: 18px; display: block; }
+body.r4 .r4t-x:hover { background: #F4F4F2; color: #111111; }
+body.r4.night .r4t-x { color: #B8B8B8; }
+body.r4.night .r4t-x:hover { background: #2B2B2B; color: #F2F2F2; }
+
+body.r4 .r4t-t { margin: 0 0 6px; font-size: 18px; font-weight: 700; line-height: 1.25; letter-spacing: -.01em; color: inherit; text-wrap: balance; }
+body.r4 .r4t-b { margin: 0; font-size: 15px; font-weight: 400; line-height: 1.5; color: #4A4A4A; text-wrap: pretty; }
+body.r4.night .r4t-b { color: #C8C8C8; }
+body.r4 .r4t-b2 { margin-top: 8px; }
+body.r4 .r4t-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+body.r4 .r4t-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  background: #FFFFFF; color: #111111; border: 1px solid #DCDCD7; }
+body.r4 .r4t-chip.main { background: #111111; color: #F2F2F2; border-color: #111111; }
+body.r4.night .r4t-chip { background: #191919; color: #F2F2F2; border-color: #3A3A3A; }
+body.r4.night .r4t-chip.main { background: #F2F2F2; color: #111111; border-color: #F2F2F2; }
+
+body.r4 .r4t-foot { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+body.r4 .r4t-btn { height: 38px; padding: 0 16px; border-radius: 12px; font: 600 14px/1 var(--r4-font); cursor: pointer; white-space: nowrap;
+  background: #FFFFFF; color: #111111; border: 1px solid #DCDCD7; }
+body.r4 .r4t-btn:hover { border-color: #111111; }
+body.r4 .r4t-btn.r4t-main { background: #111111; color: #F2F2F2; border-color: #111111; min-width: 78px; }
+body.r4 .r4t-btn.r4t-main:hover { background: #2B2B2B; border-color: #2B2B2B; }
+body.r4.night .r4t-btn { background: #191919; color: #F2F2F2; border-color: #3A3A3A; }
+body.r4.night .r4t-btn:hover { border-color: #F2F2F2; }
+body.r4.night .r4t-btn.r4t-main { background: #F2F2F2; color: #111111; border-color: #F2F2F2; }
+body.r4.night .r4t-btn.r4t-main:hover { background: #FFFFFF; border-color: #FFFFFF; }
+body.r4 .r4t-never { padding: 6px 2px; margin-left: -2px; border: 0; background: none; font: 500 13px/1.2 var(--r4-font); color: #5A5A5A; cursor: pointer;
+  text-decoration: underline; text-decoration-color: rgba(90, 90, 90, .45); text-underline-offset: 3px; white-space: nowrap; }
+body.r4 .r4t-never:hover { color: #111111; text-decoration-color: currentColor; }
+body.r4.night .r4t-never { color: #B8B8B8; text-decoration-color: rgba(184, 184, 184, .45); }
+body.r4.night .r4t-never:hover { color: #F2F2F2; }
+body.r4 .r4t :is(.r4t-btn, .r4t-x, .r4t-never):focus-visible { outline: 2px solid #111111; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(140, 198, 63, .35); }
+body.r4.night .r4t :is(.r4t-btn, .r4t-x, .r4t-never):focus-visible { outline-color: #F2F2F2; }
+
+/* the "?" in the opened card's header (r4_core.js's card; same size and look as its close button) */
+body.r4 .r4c-root .r4t-help { width: 40px; height: 40px; border-radius: 12px; background: var(--c-card); border: 1px solid var(--c-line2); color: var(--c-ink);
+  display: grid; place-items: center; cursor: pointer; padding: 0; flex: none; }
+body.r4 .r4c-root .r4t-help svg { width: 19px; height: 19px; display: block; }
+body.r4 .r4c-root .r4t-help:hover { border-color: var(--c-ink); }
+body.r4 .r4c-root .r4t-help:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--c-limew); }
+body.r4 .r4c-hr > .r4t-help + .r4c-x { margin-left: -6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.r4 .r4t-dim, body.r4 .r4t-dots .r4t-dot { transition: none; }
+  body.r4 .r4t-ring { animation: none; }
+  body.r4 .r4t-tip.r4t-in, body.r4 .r4t-tip.r4t-nudge { animation: none; }
+}

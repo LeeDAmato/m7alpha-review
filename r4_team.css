@@ -1,0 +1,56 @@
+/* [PART R4-team, 26 Nov 2026] The grown tile on our team's All work page (r4_team.js), matching the clients' grown tile
+   on Content (r4_pages.css, "the grown tile on Content"): the picture alone, twice the size (articles 50% bigger, with
+   their title and first line on the picture over a dark shade), no status strip, and the buttons floating under it with
+   nothing behind them. Scoped to .r4tg; the element also carries the page's "work" and "wt st-…" classes.
+   Never pure white or pure black: off-white #FAF9F6 and off-black #111214. Words measured 4.5 to 1 or better on
+   screenshots, day and night (NOTES_TEAM.md). */
+.r4tg { position: fixed; z-index: 60; left: 0; top: 0; margin: 0; padding: 0 !important; display: block !important; gap: 0; pointer-events: auto; }
+.r4tg-going { z-index: 59; }
+.r4tg .r4tg-in { position: relative; display: flex; flex-direction: column; min-width: 0; transform-origin: 0 0; will-change: transform; }
+/* the picture alone: no border, no padding, a soft shadow lifting it over its neighbours */
+.r4tg .r4tg-box { position: relative; width: 100%; border-radius: 18px; overflow: hidden; background: #eef2f1;
+  box-shadow: 0 22px 54px rgba(17,18,20,.3), 0 3px 10px rgba(17,18,20,.14); }
+body.night .r4tg .r4tg-box { background: #2a2a2e; box-shadow: 0 22px 54px rgba(8,9,10,.72), 0 0 0 1px #2b2b2e; }
+.r4tg .r4tg-pic { all: unset; position: absolute; inset: 0; cursor: pointer; overflow: hidden; display: block; }
+.r4tg .r4tg-pic:focus-visible { outline: 3px solid #faf9f6; outline-offset: -5px; }
+.r4tg .r4tg-pic .r4tg-thumb { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.r4tg .gone .r4tg-pic > * { filter: grayscale(1); opacity: .5; }
+/* an article: its picture fills the box; title and first line bottom left over a dark shade (as on Content) */
+.r4tg .r4tg-aimg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.r4tg .r4tg-pic.r4tg-noimg { background: #1d2a2c; }
+.r4tg .r4tg-shade { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(17,18,20,.92) 0%, rgba(17,18,20,.8) 34%, rgba(17,18,20,.36) 62%, rgba(17,18,20,0) 84%); }
+.r4tg .r4tg-head { position: absolute; left: 16px; right: 20px; bottom: 15px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.r4tg .r4tg-head b { font-size: 24px; font-weight: 800; line-height: 1.08; letter-spacing: -.01em; color: #faf9f6; text-shadow: 0 1px 10px rgba(17,18,20,.45); text-wrap: pretty;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.r4tg .r4tg-head span { font-size: 14px; font-weight: 500; line-height: 1.4; color: #edece8; text-wrap: pretty;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.r4tg .r4tg-head span[hidden] { display: none; }
+/* the buttons under the picture, nothing behind them. The picture box is positioned and has a big shadow: without
+   position + z-index here the shadow paints over the buttons and greys them (as found on the clients' version) */
+.r4tg .r4tg-bar { position: relative; z-index: 1; padding-top: 10px; display: flex; flex-direction: column; gap: 7px; align-items: flex-start; background: none; }
+.r4tg .r4tg-in.r4tg-up { flex-direction: column-reverse; }
+.r4tg .r4tg-in.r4tg-up .r4tg-bar { padding-top: 0; padding-bottom: 10px; }
+.r4tg .r4tg-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+.r4tg .r4tg-b { appearance: none; -webkit-appearance: none; margin: 0; height: 32px; padding: 0 12px; border-radius: 99px; border: 0; font: inherit; font-size: 13px; font-weight: 700;
+  line-height: 1; letter-spacing: -.005em; white-space: nowrap; cursor: pointer; background: #faf9f6; color: #111214; box-shadow: 0 1px 4px rgba(17,18,20,.32); transition: background .12s ease; }
+.r4tg .r4tg-b:not(:disabled):hover { background: #e9efef; }
+.r4tg .r4tg-b.main { background: #2c6a72; color: #faf9f6; }
+.r4tg .r4tg-b.main:not(:disabled):hover { background: #24585f; }
+.r4tg .r4tg-b.danger { background: #a3341f; color: #faf9f6; }
+.r4tg .r4tg-b.danger:not(:disabled):hover { background: #8a2b19; }
+.r4tg .r4tg-b:disabled { opacity: .6; cursor: default; }
+.r4tg .r4tg-b:focus-visible { outline: 2px solid #2c6a72; outline-offset: 2px; }
+body.night .r4tg .r4tg-b:focus-visible { outline-color: #7fc4c9; }
+/* the comment box and the Drop question under the picture: each its own small light surface, so the words read on any page */
+.r4tg .r4tg-ta { width: 100%; box-sizing: border-box; min-height: 78px; border-radius: 12px; border: 1px solid rgba(17,18,20,.18); background: #faf9f6; color: #111214;
+  box-shadow: 0 2px 10px rgba(17,18,20,.16); padding: 9px 11px; font: inherit; font-size: 14px; line-height: 1.4; resize: none; }
+.r4tg .r4tg-ta::placeholder { color: #5f6b6d; }
+.r4tg .r4tg-ta:focus { outline: 2px solid #2c6a72; outline-offset: 1px; }
+.r4tg .r4tg-ask { width: 100%; box-sizing: border-box; display: grid; gap: 5px; padding: 11px 13px 12px; border-radius: 12px; background: #faf9f6; color: #111214;
+  border: 1px solid rgba(17,18,20,.12); box-shadow: 0 2px 10px rgba(17,18,20,.18); }
+.r4tg .r4tg-ask b { font-size: 14.5px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; text-wrap: pretty; }
+.r4tg .r4tg-ask span { font-size: 13px; font-weight: 500; line-height: 1.4; color: #44504f; text-wrap: pretty; }
+.r4tg .r4tg-ask .r4tg-warn { color: #8a2b19; font-weight: 600; }
+.r4tg.r4tg-busy .r4tg-pic { cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .r4tg .r4tg-b { transition: none; } }

@@ -1,0 +1,259 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+/* [PART R4-theme, 26 Nov 2026] Release 4: the Nexus look on the laptop client view. Owner: Builder C.
+   Everything is under body.r4 (r4_shell.js adds it only while R4D.on() is true), so phones and the team's own pages
+   keep Release 3 exactly. Colours are Lee's Nexus palette (R4_PLAN.md); pure white #FFFFFF is allowed for cards
+   (Lee, 26 Nov 2026), never #000000. Release 3's teal, gold, glass, glow and shine are switched off here: its parts
+   R3-btnfill, R3-btnout, R3-btngold, R3-glass, R3-startbtn, R3-msggold and R3-message are neutralised below.
+   The variables (--r4-*) are for every Release 4 file: Builder A and B may use them. */
+
+body.r4 {
+  --r4-page: #E7E8EA; --r4-frame: #F6F6F5; --r4-card: #FFFFFF; --r4-inner: #F4F4F2; --r4-sel: #EDEDEB; --r4-line: #EAEAE7;
+  --r4-ink: #111111; --r4-ink2: #5A5A5A; --r4-lab: #6D6D6D; --r4-lime: #8CC63F; --r4-limew: rgba(140,198,63,.16); --r4-limeink: #365E12;
+  --r4-btn: #111111; --r4-btnink: #F2F2F2; --r4-dot: #8A8A8A; --r4-shade: rgba(17,17,17,.45); --r4-ring: rgba(17,17,17,.14);
+  --r4-type-bg: #EEE9F8; --r4-type: #4B2E83;
+  --r4-rev-bg: #FBF3D0; --r4-rev: #6B5200; --r4-wait-bg: #FDE9D9; --r4-wait: #8A3D0C; --r4-chg-bg: #FBE4E2; --r4-chg: #8A1C12;
+  --r4-sch-bg: #E3EEFB; --r4-sch: #1D4E89; --r4-ok-bg: #E6F4D7; --r4-ok: #365E12;
+  --r4-font: "Inter", system-ui, "Segoe UI", sans-serif;
+  /* Release 3's own names, so the pages that stay (Library, Reports, Tasks, Leads, Brand) take the Nexus colours */
+  --ink: var(--r4-ink); --ink-2: var(--r4-ink2); --ink-3: var(--r4-lab); --line: var(--r4-line); --card: var(--r4-card);
+  --teal: #111111; --teal-d: #111111; --ok: var(--r4-ok); --ok-soft: var(--r4-ok-bg); --chg: var(--r4-chg); --chg-soft: var(--r4-chg-bg); --wait-soft: var(--r4-sel);
+  --shadow: 0 1px 2px rgba(17,17,17,.05); --font: var(--r4-font);
+  font-family: var(--r4-font); color: var(--r4-ink); background: var(--r4-page) !important;
+}
+body.r4.night {
+  --r4-page: #050505; --r4-frame: #101010; --r4-card: #191919; --r4-inner: #202020; --r4-sel: #2B2B2B; --r4-line: #272727;
+  --r4-ink: #F2F2F2; --r4-ink2: #B8B8B8; --r4-lab: #9C9C9C; --r4-limew: rgba(140,198,63,.16); --r4-limeink: #A8D97A;
+  --r4-btn: #F2F2F2; --r4-btnink: #111111; --r4-dot: #9C9C9C; --r4-shade: rgba(5,5,5,.7); --r4-ring: rgba(242,242,242,.22);
+  --r4-type-bg: #2A2240; --r4-type: #CDBDF2;
+  --r4-rev-bg: #3A3010; --r4-rev: #F2D36B; --r4-wait-bg: #3D2414; --r4-wait: #F5B07A; --r4-chg-bg: #3D1714; --r4-chg: #F5A39A;
+  --r4-sch-bg: #172B45; --r4-sch: #9CC3F2; --r4-ok-bg: #22351A; --r4-ok: #A8D97A;
+  --ink: var(--r4-ink); --ink-2: var(--r4-ink2); --ink-3: var(--r4-lab); --line: var(--r4-line); --card: var(--r4-card);
+  --teal: #F2F2F2; --teal-d: #F2F2F2; --dk-bg: #050505; --dk-raise: #101010; --dk-raise2: #202020; --dk-edge: #272727;
+  color-scheme: dark;
+}
+body.r4.night:not(.embed), body.r4.night:not(.embed) .story { background: var(--r4-page) !important; }
+body.r4 :is(button, input, textarea, select) { font-family: var(--r4-font); }
+body.r4 :focus-visible { outline: 2px solid var(--r4-ink); outline-offset: 2px; }
+
+/* ---------- the frame: page #E7E8EA, the menu and the main area each in a #F6F6F5 rounded frame ---------- */
+body.r4.hasside { --snw: 272px; padding-left: 272px; }
+body.r4 > header.top, body.r4 > footer, body.r4 .deco, body.r4 .phnav { display: none !important; }
+body.r4 > main#app { max-width: none; margin: 12px 12px 12px 0; padding: 26px 30px; min-height: calc(100vh - 24px); box-sizing: border-box;
+  background: var(--r4-frame); border-radius: 20px; color: var(--r4-ink); position: relative; }
+body.r4 .story, body.r4 .wover { left: 272px !important; }
+
+/* ---------- the menu ---------- */
+body.r4 #sidenav.r4-menu { display: flex !important; flex-direction: column; gap: 0; position: fixed; left: 12px !important; top: 12px !important; bottom: 12px !important;
+  width: 248px !important; padding: 18px 14px 14px; box-sizing: border-box; overflow-y: auto; overflow-x: hidden; z-index: 43;
+  background: var(--r4-frame) !important; border: 0 !important; border-radius: 20px; box-shadow: none !important; color: var(--r4-ink);
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; transition: none !important; scrollbar-width: thin; }
+body.r4 #sidenav.r4-menu:hover, body.r4 #sidenav.r4-menu:focus-within { width: 248px !important; box-shadow: none !important; }
+body.r4 .r4-logo { display: flex; align-items: center; gap: 10px; padding: 2px 6px 16px; }
+body.r4 .r4-logo img { width: 34px; height: 34px; border-radius: 10px; flex: none; display: block; }
+body.r4 .r4-logo b { display: block; font-size: 17px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; color: var(--r4-ink); }
+body.r4 .r4-logo span { display: block; font-size: 12px; line-height: 1.3; color: var(--r4-ink2); }
+body.r4 .r4-client { background: var(--r4-card); border: 1px solid var(--r4-line); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; display: grid; gap: 2px; }
+body.r4 .r4-cl1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+body.r4 .r4-cname { font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--r4-ink); overflow-wrap: anywhere; flex: 1; min-width: 0; }
+body.r4 .r4-who { display: block; font-size: 12.5px; line-height: 1.35; color: var(--r4-lab); }
+body.r4 .r4-notyou { all: unset; cursor: pointer; color: var(--r4-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+body.r4 .r4-notyou:focus-visible { outline: 2px solid var(--r4-ink); outline-offset: 2px; border-radius: 4px; }
+body.r4 .r4-client .cn-sw { width: 26px; height: 26px; flex: none; border-radius: 8px; display: inline-grid; place-items: center; background: var(--r4-inner) !important;
+  border: 1px solid var(--r4-line) !important; color: var(--r4-ink) !important; padding: 0; cursor: pointer; }
+body.r4 .r4-client .cn-sw i, body.r4 .r4-client .cn-sw svg { width: 14px; height: 14px; display: inline-flex; }
+body.r4 .r4-client .cn-view { margin-top: 8px; display: flex; padding: 3px; border-radius: 10px; background: var(--r4-inner); border: 1px solid var(--r4-line); }
+body.r4 .r4-client .cn-vb { flex: 1; border: 0; background: none; border-radius: 7px; padding: 6px 4px; font-size: 12.5px; font-weight: 600; color: var(--r4-ink2); cursor: pointer; white-space: nowrap; }
+body.r4 .r4-client .cn-vb[aria-pressed="true"] { background: var(--r4-card); color: var(--r4-ink); box-shadow: 0 1px 2px rgba(17,17,17,.1); }
+body.r4 .r4-client .cn-cvnote { display: block; margin-top: 6px; font-size: 12px; line-height: 1.35; color: var(--r4-ink2); }
+body.r4 .r4-nav { display: flex; flex-direction: column; gap: 2px; }
+body.r4 .r4-item { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid transparent; color: var(--r4-ink2); font-size: 14.5px; font-weight: 500; line-height: 1.25; cursor: pointer; }
+body.r4 .r4-item:hover { background: var(--r4-sel); color: var(--r4-ink); }
+body.r4 .r4-item[aria-pressed="true"] { background: var(--r4-card); color: var(--r4-ink); font-weight: 600; border-color: var(--r4-line); box-shadow: 0 1px 2px rgba(17,17,17,.06); }
+body.r4 .r4-item:focus-visible { outline: 2px solid var(--r4-ink); outline-offset: 1px; }
+body.r4 .r4-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.6px solid var(--r4-dot); flex: none; box-sizing: border-box; }
+body.r4 .r4-item[aria-pressed="true"] .r4-dot { background: var(--r4-lime); border-color: var(--r4-lime); }
+/* [main session, 26 Nov 2026] menu icons as in Nexus (Lee: "icons, not circles"): thin outline, the words' own colour */
+body.r4 .r4-ico { width: 20px; height: 20px; flex: none; display: inline-grid; place-items: center; color: inherit; font-style: normal; }
+body.r4 .r4-ico svg { width: 20px; height: 20px; display: block; }
+body.r4 .r4-l { flex: 1; min-width: 0; }
+body.r4 .r4-n { margin-left: auto; font-style: normal; font-size: 12px; font-weight: 600; line-height: 1.5; background: var(--r4-limew); color: var(--r4-limeink); padding: 1px 8px; border-radius: 99px; flex: none; }
+body.r4 .r4-sp { flex: 1; min-height: 16px; }
+body.r4 .r4-foot { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; margin-bottom: 10px; border-top: 1px solid var(--r4-line); }
+body.r4 .r4-foot-b { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 12px; border-radius: 12px;
+  color: var(--r4-ink2); font-size: 14px; font-weight: 500; cursor: pointer; }
+body.r4 .r4-foot-b:hover { background: var(--r4-sel); color: var(--r4-ink); }
+body.r4 .r4-foot-b:focus-visible { outline: 2px solid var(--r4-ink); outline-offset: 1px; }
+body.r4 .r4-fi { width: 18px; height: 18px; display: inline-flex; flex: none; }
+body.r4 .r4-fi svg { width: 18px; height: 18px; }
+body.r4 .r4-msg { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 14px 14px 14px 16px; border-radius: 14px;
+  background: #111111; color: #F2F2F2; font-size: 14.5px; font-weight: 600; cursor: pointer; flex: none; }
+body.r4 .r4-msg:hover { background: #262626; }
+body.r4 .r4-msg:focus-visible { outline: 2px solid var(--r4-lime); outline-offset: 2px; }
+body.r4 .r4-msg[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--r4-lime); }
+body.r4 .r4-mi { width: 18px; height: 18px; display: inline-flex; flex: none; }
+body.r4 .r4-mi svg { width: 18px; height: 18px; }
+body.r4 .r4-ml { flex: 1; min-width: 0; white-space: nowrap; }
+body.r4 .r4-mn { margin-left: auto; font-style: normal; flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--r4-lime); color: #111111; font-size: 12px; font-weight: 700; }
+body.r4.night .r4-msg { background: #F2F2F2; color: #111111; }
+body.r4.night .r4-msg:hover { background: #FFFFFF; }
+
+/* ---------- loading box (before Builder B's pages arrive) ---------- */
+body.r4 .r4-loading { display: flex; align-items: center; gap: 12px; max-width: 420px; margin: 40px auto; padding: 18px 20px; border-radius: 16px;
+  background: var(--r4-card); border: 1px solid var(--r4-line); color: var(--r4-ink2); font-size: 15px; }
+body.r4 .r4-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--r4-line); border-top-color: var(--r4-ink); flex: none; animation: r4spin 0.9s linear infinite; }
+@keyframes r4spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { body.r4 .r4-spin { animation: none; } }
+
+/* ---------- buttons: main = #111 fill, second = white with a border; 12 px corners; no gold, no glow, no shine ---------- */
+body.r4 .cta { border-radius: 12px; font-family: var(--r4-font); font-weight: 600; font-size: 14px; letter-spacing: 0; line-height: 1.2; min-height: 40px; padding: 0 18px; gap: 8px; transform: none !important; }
+body.r4 .cta .arr { display: none !important; }
+body.r4 :is(.cta.pill, .r3fill, .r3onebtn, .r3send, .r3go):not(#r4_):not(#r4__) { background: var(--r4-btn) !important; color: var(--r4-btnink) !important; border: 1px solid var(--r4-btn) !important;
+  box-shadow: none !important; border-radius: 12px !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; filter: none !important; transform: none !important; }
+body.r4 :is(.cta.pill, .r3fill, .r3onebtn, .r3send, .r3go):not(#r4_):not(#r4__):hover { background: #2A2A2A !important; border-color: #2A2A2A !important; }
+body.r4.night :is(.cta.pill, .r3fill, .r3onebtn, .r3send, .r3go):not(#r4_):not(#r4__):hover { background: #FFFFFF !important; border-color: #FFFFFF !important; }
+body.r4 :is(.cta.white, .r3gout, .r3hd .r3ans button):not(#r4_):not(#r4__) { background: var(--r4-card) !important; color: var(--r4-ink) !important; border: 1px solid var(--r4-line) !important;
+  box-shadow: none !important; border-radius: 12px !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; transform: none !important; }
+body.r4 :is(.cta.white, .r3gout, .r3hd .r3ans button):not(#r4_):not(#r4__):hover { border-color: var(--r4-ink2) !important; background: var(--r4-card) !important; }
+body.r4 :is(.cta.white, .r3gout):not(#r4_):not(#r4__) * { color: inherit !important; }
+/* the moving gold edge, the sweep of light and the round gold icons: gone */
+body.r4 :is(.r3fill, .r3gout, .cta.white, .cta.pill, .r3hd .r3ans button, .r3go):not(#r4_):not(#r4__)::before,
+body.r4 :is(.r3fill, .r3gout, .cta.white, .cta.pill, .r3hd .r3ans button, .r3go):not(#r4_):not(#r4__)::after { content: none !important; display: none !important; animation: none !important; }
+body.r4 :is(.r3ic, .r3gic, .r3sic) { display: none !important; }
+body.r4 .r3fill.r3wic:not(#r4_):not(#r4__) { gap: 8px; padding: 0 18px !important; }
+body.r4 .linkbtn, body.r4.night:not(.embed) .linkbtn, body.r4.night:not(.embed) .who button { color: var(--r4-ink); font-weight: 600; }
+body.r4 .chip { border-radius: 8px; border: 1px solid var(--r4-line); background: var(--r4-card); color: var(--r4-ink2); font-weight: 500; font-size: 13.5px; padding: 6px 12px; }
+body.r4 .chip:hover { background: var(--r4-sel); color: var(--r4-ink); }
+body.r4 .chip[aria-pressed="true"], body.r4 .chip[aria-pressed="true"]:hover { background: var(--r4-btn); color: var(--r4-btnink); border-color: var(--r4-btn); }
+body.r4.night:not(.embed) .chip { background: var(--r4-card) !important; color: var(--r4-ink2) !important; border-color: var(--r4-line) !important; }
+body.r4.night:not(.embed) .chip[aria-pressed="true"] { background: var(--r4-btn) !important; color: var(--r4-btnink) !important; border-color: var(--r4-btn) !important; }
+body.r4 .chip b { color: inherit; }
+
+/* ---------- inputs ---------- */
+body.r4 :is(.field, textarea.note-field, .r3msgbox textarea, #lib .lsearch) { background: var(--r4-card) !important; color: var(--r4-ink) !important; border: 1px solid var(--r4-line) !important;
+  border-radius: 12px !important; font-family: var(--r4-font); }
+body.r4 :is(.field, textarea.note-field, .r3msgbox textarea, #lib .lsearch):focus { outline: none !important; border-color: var(--r4-ink) !important; box-shadow: 0 0 0 3px var(--r4-ring) !important; }
+body.r4 :is(.field, textarea)::placeholder { color: var(--r4-lab); opacity: 1; }
+
+/* ---------- status labels: the Nexus colours ---------- */
+body.r4 .badge { border-radius: 8px; font-weight: 600; font-size: 12px; padding: 3px 9px; }
+body.r4 :is(.badge.wait, .badge.need) { background: var(--r4-wait-bg) !important; color: var(--r4-wait) !important; }
+body.r4 :is(.badge.chg) { background: var(--r4-chg-bg) !important; color: var(--r4-chg) !important; }
+body.r4 :is(.badge.held, .badge.wip, .badge.cli) { background: var(--r4-rev-bg) !important; color: var(--r4-rev) !important; }
+body.r4 :is(.badge.ok, .badge.pub) { background: var(--r4-ok-bg) !important; color: var(--r4-ok) !important; }
+body.r4 :is(.badge.sched) { background: var(--r4-sch-bg) !important; color: var(--r4-sch) !important; }
+body.r4 :is(.badge.gone) { background: var(--r4-sel) !important; color: var(--r4-ink2) !important; }
+
+/* ---------- boxes: empty states, the name prompt, the toast ---------- */
+body.r4 :is(.empty, .gate) { background: var(--r4-card); border: 1px solid var(--r4-line); border-radius: 16px; box-shadow: none; color: var(--r4-ink); }
+body.r4 :is(.empty, .gate) h2 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+body.r4 :is(.empty, .gate) p { color: var(--r4-ink2); }
+body.r4 .modal { background: var(--r4-shade); }
+body.r4 .modal .gate { box-shadow: 0 30px 80px rgba(17,17,17,.3); border-radius: 20px; padding: 26px; }
+body.r4 .toast { background: var(--r4-btn) !important; color: var(--r4-btnink) !important; border: 0 !important; border-radius: 12px !important; box-shadow: 0 12px 32px rgba(17,17,17,.25) !important;
+  font-family: var(--r4-font); font-weight: 500; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.r4 .toast * { color: inherit; }
+body.r4 .toast .cta.pill:not(#r4_):not(#r4__) { background: var(--r4-lime) !important; color: #111111 !important; border-color: var(--r4-lime) !important; }
+
+/* ---------- Message M7Alpha's box: a white card beside the menu's black bar ---------- */
+body.r4 .r3msgbox { left: 272px; bottom: 12px; width: 360px; padding: 20px; border-radius: 16px; background: var(--r4-card) !important; border: 1px solid var(--r4-line) !important;
+  box-shadow: 0 24px 60px rgba(17,17,17,.22) !important; color: var(--r4-ink) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; font-family: var(--r4-font); }
+body.r4 .r3msgbox h2 { font-size: 17px; font-weight: 700; color: var(--r4-ink); }
+body.r4 .r3msgbox .r3who { color: var(--r4-ink2) !important; font-size: 13.5px; }
+body.r4 .r3msgbox textarea { min-height: 120px; font-size: 14.5px; }
+body.r4 .r3msgbox .r3send:not(#r4_):not(#r4__) { min-height: 40px; padding: 0 20px !important; font-size: 14px; font-weight: 600; }
+body.r4 .r3msgbox .r3close { color: var(--r4-ink) !important; font-weight: 600; font-size: 14px; }
+body.r4 .r3msgbox .r3said { color: var(--r4-ok) !important; font-weight: 600; }
+body.r4 .r3msgbox .r3said.r3bad { color: var(--r4-chg) !important; }
+body.r4.night .r3msgbox { box-shadow: 0 24px 60px rgba(5,5,5,.6) !important; }
+
+/* ---------- the Reports page (Release 3's .r3d) ---------- */
+body.r4 .r3d { max-width: none; margin: 0; padding: 0; color: var(--r4-ink); }
+body.r4 .r3d h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 20px; }
+body.r4 .r3d h1 small { font-size: 14px; font-weight: 400; color: var(--r4-ink2); }
+body.r4 .r3d h2 { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--r4-lab) !important; margin: 4px 0 10px; }
+body.r4 .r3d :is(.r3row, .r3rep, .r3fig) { background: var(--r4-card) !important; border: 1px solid var(--r4-line) !important; border-radius: 16px; color: var(--r4-ink) !important;
+  box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.r4 .r3d :is(.r3row, .r3rep):hover { border-color: #CFCFCB !important; background: var(--r4-card) !important; }
+body.r4.night .r3d :is(.r3row, .r3rep):hover { border-color: #3A3A3A !important; }
+body.r4 .r3d .r3rep b, body.r4 .r3d .r3rep .r3big { font-weight: 600; font-size: 15.5px; color: var(--r4-ink); }
+body.r4 .r3d :is(.r3rep span, .r3row .r3s, .r3fig span, .r3none, .r3asof, .r3bl) { color: var(--r4-ink2) !important; }
+body.r4 .r3d .r3rep .r3due { color: var(--r4-wait) !important; font-weight: 600; }
+body.r4 .r3d .r3rep .r3wait { display: inline-flex; margin-top: 8px; padding: 2px 9px; border-radius: 8px; background: var(--r4-wait-bg) !important; color: var(--r4-wait) !important; font-size: 12px; font-weight: 600; }
+body.r4 .r3d .r3link { color: var(--r4-ink) !important; font-weight: 600; }
+body.r4 .r3d .r3grid { gap: 12px; }
+
+/* ---------- the Library (Release 3's All work) ---------- */
+body.r4 .work { padding: 0 0 30px; color: var(--r4-ink); }
+body.r4 :is(.work, .panelpage) .jhead h1, body.r4 .jhead h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; max-width: none; color: var(--r4-ink) !important; }
+body.r4 .jhead .lede { font-size: 14px; color: var(--r4-ink2) !important; margin-top: 4px; }
+body.r4 .work .card, body.r4 .card { border-radius: 16px; border: 1px solid var(--r4-line); box-shadow: none; background: var(--r4-card); }
+body.r4 .card:hover { transform: none; box-shadow: 0 6px 18px rgba(17,17,17,.07); }
+body.r4 .thumb { background: var(--r4-inner); }
+body.r4 .wmonth { font-size: 17px; font-weight: 600; color: var(--r4-ink) !important; }
+body.r4 .wmonth small { color: var(--r4-ink2) !important; font-weight: 500; }
+body.r4 .wfil .lab { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--r4-lab) !important; }
+body.r4 #lib .jhead .r3one { color: var(--r4-ink2) !important; font-size: 14px; }
+body.r4 .wfil .chip b { opacity: 1; color: var(--r4-lab); font-weight: 600; }
+body.r4 .wfil .chip[aria-pressed="true"] b { color: var(--r4-btnink); }
+/* the tile's status strip: the Nexus status colours (light fill, dark words; dark fill, light words by night) */
+body.r4 .wt { --st: var(--r4-sel); --stc: var(--r4-ink2); }
+body.r4 .wt.st-need { --st: var(--r4-wait-bg); --stc: var(--r4-wait); }
+body.r4 .wt.st-wip, body.r4 .wt.st-held, body.r4 .wt.st-cli { --st: var(--r4-rev-bg); --stc: var(--r4-rev); }
+body.r4 .wt.st-ok, body.r4 .wt.st-pub { --st: var(--r4-ok-bg); --stc: var(--r4-ok); }
+body.r4 .wt.st-sched { --st: var(--r4-sch-bg); --stc: var(--r4-sch); }
+body.r4 .wt.st-gone { --st: var(--r4-sel); --stc: var(--r4-ink2); }
+body.r4 .work .wt .card .body { border-top: 1px solid var(--r4-line); }
+body.r4 .work .wt .thumb.wart { background: var(--r4-card); }
+body.r4 .work .wt .thumb.wart .atitle { color: var(--r4-ink); }
+
+/* ---------- Release 3's plug-in pages (Tasks, Leads, Brand, Documents, its own Reports and Dashboard) ----------
+   They sit in the frame without their own outer padding or centred width, with the same heading, cards and buttons
+   as the rest. By night their boxes turn dark like every other card (Release 3 kept them light), so the light words read. */
+body.r4 .panelpage { color: var(--r4-ink); }
+body.r4 :is(.tk-page, .ld-page, .dh-page, .dc-page-wrap, .rp-page, .br-wrap) { max-width: none !important; margin: 0 !important; padding: 0 0 30px !important; color: var(--r4-ink); font-family: var(--r4-font); }
+body.r4 :is(.tk-h1, .ld-h1, .dh-h1, .rp-page .rp-h1, .br-h1, .dc-h1, .dc-head h1, .dc-head h2) { font-size: 26px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: -.01em !important; color: var(--r4-ink) !important; }
+body.r4 :is(.tk-lede, .tk-hint, .tk-sub, .ld-lede, .dh-lede, .rp-page .rp-lede, .br-lede) { color: var(--r4-ink2) !important; font-size: 14px; }
+body.r4 :is(.tk-sechead h2, .ld-h2, .dh-h2, .rp-page .rp-h2) { font-size: 17px !important; font-weight: 700 !important; color: var(--r4-ink) !important; }
+body.r4 :is(.tk-box, .tk-list, .tk-card, .ld-box, .dh-box, .br-logo, .rp-page .rp-card) { background: var(--r4-card) !important; border: 1px solid var(--r4-line) !important; border-radius: 16px !important; box-shadow: none !important; color: var(--r4-ink); }
+body.r4 .panelpage .dc-card { background: var(--r4-card) !important; border: 1px solid var(--r4-line) !important; border-radius: 16px !important; box-shadow: none !important; color: var(--r4-ink); }
+body.r4 .rp-page { --rp-card: var(--r4-card); --rp-raise: var(--r4-inner); --rp-edge: var(--r4-line); --rp-ink: var(--r4-ink); --rp-ink2: var(--r4-ink2); --rp-ink3: var(--r4-lab); }
+body.r4 .tk-task { border-top-color: var(--r4-line) !important; }
+body.r4 .tk-task.open, body.r4.night .tk-task.open { background: var(--r4-inner) !important; }
+body.r4 :is(.tk-t, .ld-box b, .dh-box b) { color: var(--r4-ink); }
+body.r4 :is(.tk-meta, .tk-empty) { color: var(--r4-ink2) !important; }
+body.r4 .tk-due.late { color: var(--r4-chg) !important; }
+body.r4 .tk-due.today { color: var(--r4-ok) !important; }
+body.r4 :is(.tk-n, .dh-n) { background: var(--r4-limew) !important; color: var(--r4-limeink) !important; font-weight: 600; font-size: 12px; }
+body.r4 .tk-av { background: var(--r4-btn) !important; color: var(--r4-btnink) !important; }
+body.r4 .tk-av.cl { background: var(--r4-type) !important; color: var(--r4-card) !important; }
+body.r4 .tk-tick { border-color: #B5B5B0 !important; background: var(--r4-card) !important; }
+body.r4.night .tk-tick { border-color: #5A5A5A !important; }
+body.r4 .tk-tick.on { background: var(--r4-ok) !important; border-color: var(--r4-ok) !important; color: var(--r4-card) !important; }
+body.r4 :is(.tk-link, .br-teamnote) { color: var(--r4-ink) !important; }
+body.r4 :is(.tk-input, .ld-input, .dh-input, .br-input) { background: var(--r4-card) !important; color: var(--r4-ink) !important; border: 1px solid var(--r4-line) !important; border-radius: 12px !important; }
+body.r4 :is(.tk-input, .ld-input, .dh-input, .br-input):focus { border-color: var(--r4-ink) !important; box-shadow: 0 0 0 3px var(--r4-ring) !important; outline: none !important; }
+/* their buttons: second (white with a border) and main (#111) */
+body.r4 :is(.tk-btn, .ld-btn, .dh-btn, .dc-btn, .br-btn, .cl-btn):not(#r4_):not(#r4__) { background: var(--r4-card) !important; color: var(--r4-ink) !important; border: 1px solid var(--r4-line) !important;
+  border-radius: 12px !important; box-shadow: none !important; font-family: var(--r4-font); font-weight: 600 !important; font-size: 14px !important; min-height: 40px; padding: 0 18px !important; }
+body.r4 :is(.tk-btn, .ld-btn, .dh-btn, .dc-btn, .br-btn, .cl-btn):not(#r4_):not(#r4__):hover { border-color: var(--r4-ink2) !important; }
+body.r4 :is(.tk-primary, .ld-primary, .dh-primary, .dc-main, .br-main, .cl-go):not(#r4_):not(#r4__) { background: var(--r4-btn) !important; color: var(--r4-btnink) !important; border-color: var(--r4-btn) !important; }
+body.r4 :is(.tk-primary, .ld-primary, .dh-primary, .dc-main, .br-main, .cl-go):not(#r4_):not(#r4__):hover { background: #2A2A2A !important; border-color: #2A2A2A !important; }
+body.r4.night :is(.tk-primary, .ld-primary, .dh-primary, .dc-main, .br-main, .cl-go):not(#r4_):not(#r4__):hover { background: #FFFFFF !important; border-color: #FFFFFF !important; }
+body.r4 :is(.ld-chip) { border-radius: 8px !important; background: var(--r4-card) !important; color: var(--r4-ink2) !important; border-color: var(--r4-line) !important; }
+
+/* ---------- Release 3's glass look switched off ---------- */
+body.r4.glass .sidenav, body.r4.glass .r3d :is(.r3row, .r3rep, .r3fig) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+
+/* ---------- Release 3's windows that stay: the Library's piece window (.wover.lview) and its shade ---------- */
+body.r4 .wover { background: var(--r4-frame) !important; color: var(--r4-ink); }
+body.r4 .wover .wbar { background: var(--r4-card) !important; border-bottom: 1px solid var(--r4-line) !important; }
+body.r4 .wover .wbar .linkbtn { color: var(--r4-ink) !important; font-weight: 600; text-decoration: none; padding: 6px 8px; border-radius: 8px; }
+body.r4 .wover .wbar .linkbtn:hover { background: var(--r4-sel); }
+body.r4 .lview { border: 1px solid var(--r4-line) !important; border-radius: 20px !important; box-shadow: 0 30px 80px rgba(17,17,17,.28) !important; }
+body.r4 .lshade { background: var(--r4-shade) !important; }
+body.r4 .lview .linfo h2 { font-size: 22px; font-weight: 700; color: var(--r4-ink); }
+body.r4 .lview .lmeta, body.r4 .lview .lcap p { color: var(--r4-ink2) !important; }
+body.r4 .lview .lcap .lab { color: var(--r4-lab) !important; font-weight: 600; letter-spacing: .06em; }
+body.r4 .lview .ltext { background: var(--r4-card) !important; color: var(--r4-ink); }
+body.r4 .lview .lart :is(img, video) { background: var(--r4-inner) !important; box-shadow: none !important; border: 1px solid var(--r4-line); }
