@@ -1,0 +1,49 @@
+/* [PART R4-pin, 26 Nov 2026] Pins on the artwork, Figma style (r4_pin.js), in the client's card and our team card.
+   Nexus colours; pure white allowed in Release 4; never #000000. */
+body.r4 .r4pin-box { position: relative; }
+body.r4 .r4pin-layer { position: absolute; inset: 0; z-index: 3; display: none; border-radius: inherit; }
+body.r4.r4pin-on .r4pin-layer { display: block; outline: 2px dashed #8CC63F; outline-offset: 3px;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M14 2a9 9 0 0 0-9 9c0 6.6 9 15 9 15s9-8.4 9-15a9 9 0 0 0-9-9z' fill='%23111111' stroke='%23FFFFFF' stroke-width='2'/%3E%3Ccircle cx='14' cy='11' r='3.2' fill='%238CC63F'/%3E%3C/svg%3E") 14 26, crosshair; }
+body.r4 .r4pin-m { position: absolute; z-index: 4; width: 28px; height: 28px; margin: -28px 0 0 -2px; padding: 0; border: 2px solid #FFFFFF; cursor: pointer;
+  border-radius: 50% 50% 50% 4px; background: #111111; color: #F2F2F2; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(17,17,17,.4); font: 700 12.5px/1 Inter, system-ui, sans-serif; }
+body.r4 .r4pin-m .r4pin-n { pointer-events: none; }
+body.r4 .r4pin-m:hover, body.r4 .r4pin-m.open { background: #8CC63F; color: #111111; z-index: 6; }
+body.r4 .r4pin-m.flash { animation: r4pinFlash .4s ease-in-out 3; }
+@keyframes r4pinFlash { 50% { transform: scale(1.35); } }
+body.r4 .r4pin-m:focus-visible { outline: 2px solid #8CC63F; outline-offset: 3px; }
+body.r4 .r4pin-b { position: absolute; left: 34px; top: -4px; width: max-content; max-width: 240px; padding: 9px 11px; border-radius: 12px; background: #FFFFFF; color: #111111; text-align: left;
+  box-shadow: 0 10px 30px rgba(17,17,17,.28); border: 1px solid #EAEAE7; display: grid; gap: 3px; z-index: 7; pointer-events: none; }
+body.r4 .r4pin-b.left { left: auto; right: 34px; }
+body.r4 .r4pin-b.up { top: auto; bottom: -4px; }
+body.r4 .r4pin-b b { font-size: 13.5px; font-weight: 600; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+body.r4 .r4pin-b span { font-size: 12px; font-weight: 500; color: #5A5A5A; }
+/* the comment box at the spot */
+body.r4 .r4pin-c { position: absolute; z-index: 8; width: 0; height: 0; }
+body.r4 .r4pin-c .r4pin-new { position: absolute; left: 0; top: 0; margin: -28px 0 0 -2px; background: #8CC63F; color: #111111; cursor: default; }
+body.r4 .r4pin-cc { position: absolute; left: 34px; top: -30px; width: 260px; padding: 10px; border-radius: 14px; background: #FFFFFF; border: 1px solid #DCDCD7;
+  box-shadow: 0 16px 40px rgba(17,17,17,.3); display: grid; gap: 8px; }
+body.r4 .r4pin-c.left .r4pin-cc { left: auto; right: 10px; }
+body.r4 .r4pin-c.up .r4pin-cc { top: auto; bottom: 34px; }
+body.r4 .r4pin-ta { width: 100%; box-sizing: border-box; min-height: 58px; resize: none; border: 1px solid #DCDCD7; border-radius: 10px; padding: 8px 10px; font: 500 13.5px/1.4 Inter, system-ui, sans-serif; color: #111111; background: #FFFFFF; }
+body.r4 .r4pin-ta::placeholder { color: #6D6D6D; }
+body.r4 .r4pin-ta:focus { outline: none; border-color: #111111; box-shadow: 0 0 0 3px rgba(140, 198, 63, .25); }
+body.r4 .r4pin-msg { margin: 0; font-size: 12.5px; color: #5A5A5A; }
+body.r4 .r4pin-msg:empty { display: none; }
+body.r4 .r4pin-row { display: flex; justify-content: flex-end; gap: 6px; }
+body.r4 .r4pin-row button { height: 32px; padding: 0 12px; border-radius: 9px; font: 600 13px/1 Inter, system-ui, sans-serif; cursor: pointer; border: 1px solid #DCDCD7; background: #FFFFFF; color: #111111; }
+body.r4 .r4pin-row .r4pin-post { background: #111111; color: #F2F2F2; border-color: #111111; }
+body.r4 .r4pin-row button:disabled { opacity: .6; cursor: default; }
+/* the line under the picture while pin mode is on, and the list of pins */
+body.r4 .r4pin-hint { margin: 0; font-size: 13px; font-weight: 600; color: var(--c-ink, #111111); background: var(--c-limew, rgba(140,198,63,.16)); border: 1px solid var(--c-limeb, rgba(140,198,63,.5)); padding: 6px 12px; border-radius: 10px; flex: none; }
+body.r4 .r4pin-hint[hidden] { display: none; }
+body.r4 .r4pin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+body.r4 .r4pin-li { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: 0; padding: 6px; border-radius: 10px; cursor: pointer; font: inherit; color: var(--c-ink, #111111); }
+body.r4 .r4pin-li:hover { background: var(--c-sel, #EDEDEB); }
+body.r4 .r4pin-li i { flex: none; width: 22px; height: 22px; border-radius: 50% 50% 50% 3px; background: var(--c-main, #111111); color: var(--c-mainfg, #F2F2F2); display: grid; place-items: center; font-style: normal; font-size: 11.5px; font-weight: 700; }
+body.r4 .r4pin-li span { display: grid; gap: 2px; min-width: 0; }
+body.r4 .r4pin-li b { font-size: 13.5px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+body.r4 .r4pin-li small { font-size: 12px; color: var(--c-ink2, #5A5A5A); }
+body.r4 .r4pin-tog { display: inline-flex; align-items: center; gap: 7px; }
+body.r4 .r4pin-tog[aria-pressed="true"] { background: var(--c-main, #111111); color: var(--c-mainfg, #F2F2F2); border-color: var(--c-main, #111111); }
+body.r4 .r4pin-tog svg { width: 16px; height: 16px; }
+@media (prefers-reduced-motion: reduce) { body.r4 .r4pin-m.flash { animation: none; } }

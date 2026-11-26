@@ -12,9 +12,9 @@
    - Content: every piece at every stage, a stage line (Internal review first and chosen), our checks hidden unless asked,
      the team's grown tile on hover (r4_team.js: it finds the tiles by #work .wt[data-id]).
    - The opened piece: Release 4's card (the r4c- look) with the team's tools. Every save is the page's own Release 3
-     function: workRun ("move" | "skip" | "ok" | "pull" | "comment"). The tools that live in Release 3's own card (Draw, Pin,
-     Edit caption, Fix caption, Team only, Edited in Figma) open that card (openWork, the page's own window with the
-     team's sign-in) and press that tool in it, so they run exactly the code they run today. No new database call.
+     function: workRun ("move" | "skip" | "ok" | "pull" | "comment"); Pin, Edit caption and Edited in Figma save here, in
+     the card, with Release 3's own submit_feedback note (see teamNote). No tool opens Release 3's card any more (Lee,
+     26 Nov 2026); Draw, Fix caption and Team only are gone from our view.
    - Review links (?c=<code>&wall=<ids>, which the board's ?review=<code>&ids=… becomes): Content with exactly those
      pieces, the first one open in the card.
    window.R4TV = { on(), go(key), content(opts), open(id, opts), close(), state() } (for checks). */
@@ -55,7 +55,11 @@
   function load(force) {
     if (!force && loaded()) return Promise.resolve();
     if (TV.loading) return TV.loading;
-    TV.loading = workLoad().catch((e) => { TV.err = e && e.message; }).finally(() => { TV.loading = null; });
+    // a read that failed (for example while the team's list of clients is still arriving) is tried again after 1.5 s, never
+    // straight away: the pages that wait on it ask again when it ends, and an instant retry would lock the page in a loop
+    const wait = TV.failAt ? Math.max(0, 1500 - (Date.now() - TV.failAt)) : 0;
+    TV.loading = new Promise((ok) => setTimeout(ok, wait)).then(() => workLoad()).then(() => { TV.failAt = 0; }, (e) => { TV.err = e && e.message; TV.failAt = Date.now(); })
+      .finally(() => { TV.loading = null; });
     return TV.loading;
   }
 
@@ -180,6 +184,10 @@
     if (!teamOn()) return baseRender.apply(this, arguments);
     el = el || document.getElementById("app"); if (!el) return;
     TV.page = page;
+    // the remembered tab follows the page shown, however it was reached (address, menu, Back, a review link, a reload):
+    // the team's grown tile (r4_team.js) and the page's own redraws read it
+    try { if (page === "content" && S.tab !== "work") { S.tab = "work"; sess.set("m7r-tab", "work"); } else if ((page === "home" || page === "calendar") && S.tab === "work") { S.tab = "review"; sess.set("m7r-tab", "review"); } } catch (e) {}
+    if (page !== "content" && SEL.on) selEnd();
     if (page === "calendar") {
       if (!loaded()) { el.replaceChildren(loadingBox("Loading the Calendar…")); load().then(() => { if (TV.page === "calendar") redraw(); }); return; }
       const out = baseRender.apply(this, arguments);
@@ -191,6 +199,7 @@
     const keep = el.querySelector(":scope > .r4tv-" + page) ? [window.scrollY, el.scrollTop] : null;
     const root = page === "home" ? homePage() : contentPage(opts || {});
     el.replaceChildren(root); el.__r4p = page;
+    const bar = root.querySelector(".r4tv-bar"); if (bar) placeBar(bar);
     if (keep) { window.scrollTo(0, keep[0]); el.scrollTop = keep[1]; }
     else { try { window.scrollTo(0, 0); } catch (e) {} }
   };
@@ -324,12 +333,13 @@
     const checksBtn = nChecks || W.checks ? E("button", { type: "button", class: "r4p-fchip r4tv-checks", "aria-pressed": String(!!W.checks), title: "Proof screenshots and checks we made for ourselves",
       onclick: () => { W.checks = !W.checks; redo(); } }, W.checks ? `Hide our checks · ${nChecks}` : `Show our checks · ${nChecks}`) : null;
     root.append(E("div", { class: "r4p-top" }, E("div", {}, E("h1", { class: "r4p-h1", text: "Content" }),
-      E("p", { class: "r4p-sub", text: nw(`Every piece for ${cname()}, at every stage. Only the M7Alpha team sees this view.`) })), checksBtn));
+      E("p", { class: "r4p-sub", text: nw(`Every piece for ${cname()}, at every stage. Only the M7Alpha team sees this view.`) })),
+      E("div", { class: "r4tv-topb" }, checksBtn, ...selTop(list))));
     const dropped = (W.dropped || []).filter((i) => W.checks || !isCheck(i)).length;
     root.append(E("div", { class: "r4p-filters", role: "group", "aria-label": "Stage" },
       ...(cs.stage === "link" ? [chip("link", "From your link", (cs.link || []).length)] : []),
       ...(cs.stage === "ids" ? [chip("ids", cs.idsLabel || "Chosen pieces", (cs.ids || []).length)] : []),
-      ...ORDER.map((k) => chip(k, LABEL[k], c[k])), chip("all", "All stages", pool().length), dropped ? chip("dropped", "Dropped", dropped) : null));
+      chip("all", "All stages", pool().length), ...ORDER.map((k) => chip(k, LABEL[k], c[k])), dropped ? chip("dropped", "Dropped", dropped) : null));      // Lee, 26 Nov: "All stages" first
     if (types.length > 1) root.append(E("div", { class: "r4p-filters r4tv-types", role: "group", "aria-label": "Type" },
       E("button", { type: "button", class: "r4p-fchip", "aria-pressed": String(!cs.type), onclick: () => { cs.type = null; redo(); } }, "All types"),
       ...types.map((t) => E("button", { type: "button", class: "r4p-fchip", "aria-pressed": String(cs.type === t), onclick: () => { cs.type = cs.type === t ? null : t; redo(); } }, t))));
@@ -358,6 +368,7 @@
       sec.append(E("div", { class: "r4p-tw" }, E("div", { class: "r4p-tiles r4p-wrap" }, ...r.list.map((i) => tile(i, r)))));
       root.append(sec);
     });
+    if (SEL.on) root.append(selBar());
     return root;
   }
   function tile(i, r) {
@@ -372,17 +383,120 @@
     if (m && m.type === "video") thumb.append(E("span", { class: "r4tv-play", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24"><path d="M9 7v10l8-5z"/></svg>' }));
     const n = (i.media || []).length;
     const bits = [dateOf(i) ? dayLabel(dateOf(i)) : null].filter(Boolean);
-    const lab = `${t}: ${short(i.title) || t}. ${LABEL[s]}${i.audience === "team" ? ", team only" : ""}`;
-    const pic = E("button", { type: "button", class: "r4tv-pic", style: `width:${w}px;height:${hgt}px`, "aria-label": "Open " + lab, onclick: () => open(i.id, { run: r.list.map((x) => x.id), row: r.title }) },
-      thumb, E("span", { class: "r4tv-tl" }, E("span", { class: "r4p-chip r4p-c-" + CHIP[s], text: LABEL[s] })),
+    const lab = `${t}: ${short(i.title) || t}. ${LABEL[s]}`;
+    const ticked = SEL.on && SEL.ids.has(i.id);
+    const pic = E("button", { type: "button", class: "r4tv-pic", style: `width:${w}px;height:${hgt}px`, "aria-label": (SEL.on ? (ticked ? "Untick " : "Tick ") : "Open ") + lab,
+      ...(SEL.on ? { "aria-pressed": String(ticked) } : {}),
+      onclick: () => { if (SEL.on) return selToggle(i.id); open(i.id, { run: r.list.map((x) => x.id), row: r.title }); } },
+      thumb,
       n > 1 && !art ? E("span", { class: "r4tv-n", text: "1/" + n }) : null,
-      i.audience === "team" ? E("span", { class: "r4tv-team", text: "Team only" }) : null);
-    return E("div", { class: "wt st-" + (({ internal: "need", client: "cli", wip: "wip", approved: "ok", scheduled: "sched", published: "pub", dropped: "gone" })[s] || "need") + " r4tv-t" + (art ? " r4tv-wide" : "") + (gone ? " gone" : ""),
-      "data-id": i.id, title: [i.title, LABEL[s] + (i.noclient ? " (skipped the client)" : ""), i.audience === "team" ? "team only" : null, isCheck(i) ? "our own check" : null].filter(Boolean).join("\n"),
-      oncontextmenu: (e) => { e.preventDefault(); try { workMenu(i, e.currentTarget); } catch (x) {} } },
-      pic, E("span", { class: "r4p-meta" }, E("b", { text: t }), bits.length ? " · " + bits.join(" · ") : ""));
+      SEL.on ? E("span", { class: "r4tv-tick" + (ticked ? " on" : ""), "aria-hidden": "true", html: ticked ? '<svg viewBox="0 0 16 16"><path d="m3.5 8.4 3 3 6-6.4"/></svg>' : "" }) : null);
+    return E("div", { class: (ticked ? "r4tv-on " : "") + (SEL.on ? "r4tv-picking " : "") + "wt st-" + (({ internal: "need", client: "cli", wip: "wip", approved: "ok", scheduled: "sched", published: "pub", dropped: "gone" })[s] || "need") + " r4tv-t" + (art ? " r4tv-wide" : "") + (gone ? " gone" : ""),
+      "data-id": i.id, title: [i.title, LABEL[s] + (i.noclient ? " (skipped the client)" : ""), isCheck(i) ? "our own check" : null].filter(Boolean).join("\n"),
+      oncontextmenu: (e) => { e.preventDefault(); if (SEL.on) return; try { workMenu(i, e.currentTarget); } catch (x) {} } },
+      // Lee, 26 Nov 2026: the stage label sits to the right of the post type, off the picture; it wraps under the type when
+      // the line is too long for the tile
+      pic, E("span", { class: "r4p-meta r4tv-meta", style: `max-width:${w}px` }, E("span", { class: "r4tv-mt" }, E("b", { text: t }), bits.length ? " · " + bits.join(" · ") : ""),
+        E("span", { class: "r4p-chip r4p-c-" + CHIP[s] + " r4tv-mchip", text: LABEL[s] })));
   }
   const cs6 = (i) => (i.dropped_at ? "dropped" : six(i));
+
+  // ---------- Select several (Lee, 26 Nov 2026: "in the content page, I want the option to select multiple items… so I
+  // can then mass approve-send to client, for example"). Team only, signed-in editors only. Each action runs the page's
+  // own workRun once per piece, one after another (the same save the single button makes), so N ticked pieces make
+  // exactly N single saves. A piece that fails does not stop the others and stays ticked. ----------
+  const SEL = { on: false, ids: new Set(), phase: "", kind: null, k: 0, n: 0, result: null };
+  const SAY = { move: "Move to client review", skip: "Approve, skip client", ok: "Approve", pull: "Pull back from client review" };
+  const ONLYFOR = { move: "is only for pieces in Internal review that are for the client", skip: "is only for pieces in Internal review that are for the client",
+    ok: "is only for team-only pieces", pull: "is only for pieces in Client review" };
+  const DOING = { move: "Sending", skip: "Approving", ok: "Approving", pull: "Pulling back" };
+  function selStart() { if (!canAct()) return; Object.assign(SEL, { on: true, phase: "", result: null }); SEL.ids.clear(); try { R4T && R4T.close(); W.picking = true; } catch (e) {} redraw(); }
+  function selEnd() { Object.assign(SEL, { on: false, phase: "", result: null, kind: null }); SEL.ids.clear(); try { W.picking = false; } catch (e) {} if (TV.page === "content") redraw(); }
+  function selToggle(id) { if (SEL.phase === "run") return; SEL.ids.has(id) ? SEL.ids.delete(id) : SEL.ids.add(id); if (SEL.phase !== "run") { SEL.phase = ""; SEL.result = null; } redraw(); }
+  function selTop(list) {
+    if (!canAct()) return [];
+    if (!SEL.on) return [E("button", { type: "button", class: "r4p-fchip r4tv-selb", onclick: selStart }, "Select")];
+    const all = list.map((i) => i.id), allOn = all.length && all.every((id) => SEL.ids.has(id));
+    return [E("button", { type: "button", class: "r4p-fchip", disabled: SEL.phase === "run", onclick: () => { if (allOn) all.forEach((id) => SEL.ids.delete(id)); else all.forEach((id) => SEL.ids.add(id)); SEL.phase = ""; SEL.result = null; redraw(); } },
+        allOn ? "Untick all in this stage" : TV.cs.stage === "all" ? "Select all shown" : "Select all in this stage"),
+      E("button", { type: "button", class: "r4p-fchip r4tv-selx", disabled: SEL.phase === "run", onclick: selEnd }, "Cancel")];
+  }
+  const picked = () => [...SEL.ids].map(byId).filter((i) => i && !i.dropped_at);
+  function selBar() {
+    const list = picked(), n = list.length, who = cname();
+    const bar = E("div", { class: "r4tv-bar", role: "region", "aria-label": "Act on the ticked pieces", "aria-live": "polite" });
+    const count = E("b", { class: "r4tv-barn", text: n ? `${n} selected` : "Tick the pieces to act on" });
+    if (SEL.phase === "ask") {
+      bar.classList.add("r4tv-barask");
+      bar.append(E("div", { class: "r4tv-bart" }, E("b", { text: `Send ${plural(n, "piece", "pieces")} to ${who} for review?` }),
+        E("span", { text: nw(`${who} will see ${n === 1 ? "it" : "them"} straight away and be asked to approve ${n === 1 ? "it" : "each one"}. You can pull a piece back while they have not answered.`) })),
+        E("div", { class: "r4tv-bara" }, E("button", { type: "button", class: "r4p-btn r4p-dark", "data-act": "bulk-yes", onclick: () => selRun("move") }, `Yes, send ${n}`),
+          E("button", { type: "button", class: "r4p-btn", "data-act": "bulk-no", onclick: () => { SEL.phase = ""; redraw(); } }, "Cancel")));
+      return bar;
+    }
+    if (SEL.phase === "run") {
+      bar.append(E("span", { class: "r4-spin", "aria-hidden": "true" }), E("b", { class: "r4tv-barn", text: `${DOING[SEL.kind]} ${SEL.k} of ${SEL.n}…` }),
+        E("span", { class: "r4tv-barw", text: nw("Please keep this page open until it finishes.") }));
+      return bar;
+    }
+    if (SEL.result) {
+      const r = SEL.result, did = { move: `Sent ${r.ok} of ${r.n} to ${who}`, skip: `Approved ${r.ok} of ${r.n}, client skipped`, ok: `Approved ${r.ok} of ${r.n}`, pull: `Pulled back ${r.ok} of ${r.n} from client review` }[r.kind];
+      bar.classList.add(r.bad.length ? "r4tv-barbad" : "r4tv-bargood");
+      bar.append(E("div", { class: "r4tv-bart" }, E("b", { text: did + "." }),
+        r.bad.length ? E("span", { text: nw(`${r.bad.length === 1 ? "This one didn't go" : `These ${r.bad.length} didn't go`}, so ${r.bad.length === 1 ? "it is" : "they are"} still ticked: ` + r.bad.map((x) => `“${short(x.title)}” (${x.why})`).join("; ") + ".") })
+          : E("span", { text: nw(r.ok === 1 ? "The piece has moved to its new stage." : "The pieces have moved to their new stage.") })),
+        E("div", { class: "r4tv-bara" }, E("button", { type: "button", class: "r4p-btn r4p-dark", "data-act": "bulk-done", onclick: () => { SEL.result = null; if (!SEL.ids.size) selEnd(); else redraw(); } }, r.bad.length ? "OK" : "Done")));
+      return bar;
+    }
+    const kinds = ["move", "skip", "ok", "pull"].map((k) => [k, list.filter((i) => { try { return WACT[k].can(i); } catch (e) { return false; } }).length]).filter(([, c]) => c > 0);
+    // one line per reason: "Move to client review" and "Approve, skip client" share theirs
+    const grp = new Map(); kinds.filter(([, c]) => c < n).forEach(([k, c]) => { const g = ONLYFOR[k] + "|" + c; if (!grp.has(g)) grp.set(g, { ks: [], c, why: ONLYFOR[k] }); grp.get(g).ks.push(k); });
+    const why = [...grp.values()].map((g) => `${g.ks.map((k) => "“" + SAY[k] + "”").join(" and ")} ${g.ks.length > 1 ? g.why.replace(/^is /, "are ") : g.why}: ${g.c} of ${n} ticked ${g.c === 1 ? "fits" : "fit"}.`);
+    const acts = kinds.map(([k, c], j) => E("button", { type: "button", class: "r4p-btn" + (j === 0 && c === n ? " r4p-dark" : ""), "data-act": "bulk-" + k, disabled: c < n,
+      title: c < n ? `${SAY[k]} ${ONLYFOR[k]}` : `${SAY[k]}: ${plural(n, "piece", "pieces")}`, onclick: () => { if (k === "move") { SEL.phase = "ask"; redraw(); } else selRun(k); } }, SAY[k]));
+    if (n && !kinds.length) why.push("None of the actions fits these pieces at their stage.");
+    bar.append(count, E("div", { class: "r4tv-bara" }, ...acts));
+    if (why.length) bar.append(E("p", { class: "r4tv-barw", text: why.map(nw).join(" ") }));
+    return bar;
+  }
+  async function selRun(kind) {
+    if (!canAct() || SEL.phase === "run") return;
+    const list = picked().filter((i) => { try { return WACT[kind].can(i); } catch (e) { return false; } });
+    if (!list.length) return;
+    Object.assign(SEL, { phase: "run", kind, k: 0, n: list.length, result: null });
+    document.body.classList.add("r4tv-running");      // the page's own "Saving…" messages stay out of the way: the bar shows the progress
+    redraw();
+    const res = { kind, n: list.length, ok: 0, bad: [] };
+    const toastEl = document.getElementById("toast");
+    for (const p of list) {
+      SEL.k++; redraw();
+      for (let t = 0; t < 100 && W.busy; t++) await new Promise((ok) => setTimeout(ok, 100));      // the page saves one thing at a time
+      if (toastEl) toastEl.textContent = "";
+      const now = byId(p.id) || p;
+      try { await workRun(kind, [now], {}); } catch (e) {}
+      try { W.picking = true; } catch (e) {}      // the page's own save turns "select several" off after each one
+      const told = (toastEl && toastEl.textContent || "").trim();
+      if (!told || /^(That stopped|Nothing to do)/.test(told)) {
+        res.bad.push({ id: p.id, title: p.title, why: !told ? "nothing happened" : /^Nothing to do/.test(told) ? "it had already moved on" : told.replace(/^That stopped part-way:\s*/, "").replace(/\.\s*\d+ of \d+ saved\.?.*$/, "") || "it didn't save" });
+      } else { res.ok++; SEL.ids.delete(p.id); }
+    }
+    document.body.classList.remove("r4tv-running");
+    try { hideToast(); } catch (e) {}      // the bar says what happened; the page's last message (with Undo for one piece only) would mislead
+    await load(true).catch(() => {});
+    Object.assign(SEL, { phase: "", result: res });
+    redraw();
+  }
+  addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !SEL.on || TV.card || SEL.phase === "run") return;
+    const m = document.getElementById("modal"); if (m && !m.hidden) return;
+    if (document.getElementById("wover") || document.getElementById("wmenu")) return;
+    e.preventDefault(); if (SEL.phase === "ask") { SEL.phase = ""; redraw(); } else selEnd();
+  });
+  addEventListener("resize", () => { const b = document.querySelector(".r4tv-bar"); if (b) placeBar(b); });
+  function placeBar(b) {
+    const app = document.getElementById("app"); if (!app || !b) return;
+    const r = app.getBoundingClientRect(); b.style.left = Math.round(r.left + 24) + "px"; b.style.width = Math.round(r.width - 48) + "px";
+  }
 
   // the page's own redraws after a save (workRun -> workLoad -> drawWork) draw our page again
   const baseDraw = drawWork;
@@ -451,10 +565,30 @@
   }
   // R4C (the client card) answers for us too: the shell's Back, Calendar items and Coming up all go through it
   const bOpen = R4C.open, bIsOpen = R4C.isOpen, bClose = R4C.close;
+  // a link to one piece (?p=<id or its first 8 letters>, turned into &page=content&open=<id> before the page starts; see
+  // patch_R4_load.py, PART R4-plink) opens that piece over Content; a piece this link cannot see says so (no silent Home)
+  const NOTHERE = "This piece isn't available on this link.";
+  const notHere = () => { try { showToast(NOTHERE); hideToastLater(6000); } catch (e) {} try { if (new URLSearchParams(location.search).get("open")) R4.setUrl({ open: null }, "replace"); } catch (e) {} };
   R4C.open = function (id, opts) {
-    if (teamOn() && !loaded()) { load().then(() => R4C.open(id, opts)); return; }
+    if (teamOn() && !loaded()) { const n = ((opts && opts._tries) || 0) + 1; if (n > 12) { notHere(); return false; } load().then(() => R4C.open(id, Object.assign({}, opts || {}, { _tries: n }))); return; }
     if (teamOn()) { let full = id; try { const x = W.items.concat(W.dropped || []).find((i) => i.id === id || i.id.startsWith(String(id))); if (x) full = x.id; } catch (e) {}
-      if (byId(full)) return open(full, opts || {}); }
+      if (byId(full)) { if (byId(full).dropped_at) { notHere(); return false; } return open(full, opts || {}); }
+      if (/^[0-9a-f-]{4,}$/i.test(String(id)) && !/^pc-/.test(String(id))) { notHere(); return false; } }
+    // the client's view: a short id is found among the client's own pieces (waiting and answered)
+    if (!teamOn() && /^[0-9a-f]{4,35}$/i.test(String(id))) {
+      // on our board the team's sign-in arrives a moment after the page: wait for it (up to 8 s) before deciding
+      let board = false; try { board = (ON_BOARD || window.__r4TeamSoon) && !TEAM.on && !(opts && opts._waited); } catch (e) {}
+      if (board) {
+        const t0 = Date.now();
+        return new Promise((done) => { const tick = () => { let on = false; try { on = teamOn(); } catch (e) {}
+          if (on || Date.now() - t0 > 8000) done(R4C.open(id, Object.assign({}, opts || {}, { _waited: true }))); else setTimeout(tick, 200); }; tick(); });
+      }
+      return Promise.resolve().then(() => R4D.ready()).catch(() => null).then(() => {
+        let hit = null; try { hit = R4D.pieces().find((x) => String(x.id).startsWith(String(id).toLowerCase())) || null; } catch (e) {}
+        if (!hit) { notHere(); return false; }
+        return bOpen.call(R4C, hit.id, Object.assign({}, opts || {}, { rowKey: (opts && opts.rowKey) || R4D.rowOf(hit.id) }));
+      });
+    }
     return bOpen.apply(this, arguments);
   };
   R4C.isOpen = function () { return !!TV.card || bIsOpen.apply(this, arguments); };
@@ -464,6 +598,53 @@
     const c = TV.card; if (!c || c.capFor === i.id) return;
     c.capFor = i.id; c.cap = null;
     try { TEAM.sb.from("items").select("caption").eq("id", i.id).maybeSingle().then((r) => { if (TV.card && TV.card.id === i.id) { TV.card.cap = (r && r.data && r.data.caption) || ""; drawCard(); } }, () => {}); } catch (e) {}
+    readNotes(i);
+  }
+  // the notes on this piece (ours and the client's), for the pins on the artwork: read as the team's sign-in reads them
+  function readNotes(i) {
+    const c = TV.card; if (!c) return;
+    try { TEAM.sb.from("feedback").select("id,reviewer,decision,comment,marks,variant_id,item_version,created_at").eq("item_id", i.id).order("created_at").then((r) => {
+      if (TV.card && TV.card.id === i.id) { const got = (r && r.data) || [], ids = new Set(got.map((f) => f.id));
+        TV.card.fb = got.concat((TV.card.fb || []).filter((f) => f.local && !ids.has(f.id))); drawCard(); } }, () => {}); } catch (e) {}      // a note just saved stays until the read brings it
+  }
+  function pinsOf(i, media) {
+    const c = TV.card; if (!c || !media) return [];
+    return (c.fb || []).filter((f) => f.item_version === i.version && f.variant_id === media.id && f.marks && Array.isArray(f.marks.pins))
+      .flatMap((f) => f.marks.pins.map((q) => ({ x: +q.x, y: +q.y, text: q.text || f.comment || "", who: f.reviewer || "", when: f.created_at })));
+  }
+  // Release 3's card calls rpc with the team's sign-in (inside the board); here the same call is made with that sign-in
+  async function teamRpc(fn, args) {
+    const headers = { apikey: CONFIG.key, "Content-Type": "application/json" };
+    const t = await window.boardToken(); if (!t) throw new Error("not signed in"); headers.Authorization = "Bearer " + t;
+    const r = await fetch(`${CONFIG.url}/rest/v1/rpc/${fn}`, { method: "POST", cache: "no-store", headers, body: JSON.stringify(args) });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }
+  // a note as Release 3's card saves it (send(): submit_feedback), then told to the session as that card tells it
+  async function teamNote(i, variant, decision, comment, marks, told) {
+    if (!canAct()) return false;
+    const res = await teamRpc("submit_feedback", { p_code: S.code, p_passcode: S.pass, p_item_id: i.id, p_item_version: i.version, p_variant_id: variant, p_reviewer: TEAM.me || "Lee",
+      p_decision: decision, p_comment: comment, p_marks: marks, p_choice: null });
+    if (!res || !res.ok) throw new Error((res && res.error) || "not saved");
+    if (told !== false) { try { window.boardFeedbackSent(Object.assign({ id: i.id, title: i.title, client: cname(), decision, comment }, told || {})); } catch (e) {} }
+    return res;
+  }
+  // Edited in Figma, here in the card: Release 3's figmaTell (a "change" note "I edited this in Figma: <link>", then the
+  // board's boardFigmaEdited, which tells the session to take the frames from Figma)
+  async function figmaTold(i, b) {
+    const lab = b && b.querySelector("span:last-child"); if (b) b.disabled = true; if (lab) lab.textContent = "Telling…";
+    try {
+      const m = (i.media || [])[0] || { id: "text" };
+      await teamNote(i, m.id || "text", "change", "I edited this in Figma: " + i.figma_url, null, false);
+      let ok = false; try { ok = await window.boardFigmaEdited({ title: i.title, link: i.figma_url, version: i.version }); } catch (e) {}
+      if (lab) lab.textContent = ok ? "Told" : "Saved"; say(ok ? "Saved, and the session that made this piece has been told." : "Saved. No open session was found to tell.", ok ? "ok" : "");
+    } catch (e) { if (b) b.disabled = false; if (lab) lab.textContent = "Edited in Figma"; say("That didn't save: " + e.message, "err"); }
+  }
+  async function pinSave(i, media, x, y, text) {
+    try { const res = await teamNote(i, media.id, "comment", "", { strokes: [], pins: [{ x, y, text }] }, { drew: true, edited: false }); if (!res) return false;
+      const c = TV.card; if (c && c.id === i.id) { c.fb = [...(c.fb || []), { local: true, id: res.id || "local-" + Date.now(), reviewer: TEAM.me || "Lee", decision: "comment", comment: "", marks: { strokes: [], pins: [{ x, y, text }] }, variant_id: media.id, item_version: i.version, created_at: new Date().toISOString() }]; c.flash = "Pinned. The session that made this piece will be told."; drawCard(); readNotes(i); }
+      return true;
+    } catch (e) { say("That didn't save: " + e.message, "err"); return false; }
   }
   const curPiece = () => (TV.card ? byId(TV.card.id) : null);
   function step(d) {
@@ -496,7 +677,7 @@
       E("button", { type: "button", class: "r4c-btn r4c-sm r4c-main", disabled: k >= c.run.length - 1, onclick: () => step(1), title: "Next piece" }, "Next piece ›")) : null;
     const head = E("header", { class: "r4c-head" },
       E("div", { class: "r4c-hl" }, E("div", { class: "r4c-chips" }, E("span", { class: "r4c-chip c-type", text: t }), E("span", { class: "r4c-chip c-" + ({ internal: "wait", client: "rev", wip: "type", approved: "pub", scheduled: "sch", published: "pub", dropped: "chg" })[s], text: LABEL[s] }),
-          i.audience === "team" ? E("span", { class: "r4c-chip c-type", text: "Team only" }) : null),
+          null),      // Lee, 26 Nov: no "Team only" label (before a piece goes to the client it is ours anyway); the stored flag still allows only "Approve"
         E("h2", { class: "r4c-title", id: "r4tv-title", text: i.title })),
       E("div", { class: "r4c-hr" }, ...(nav ? [nav] : []), E("button", { type: "button", class: "r4c-x", "aria-label": "Close", title: "Close", onclick: () => closeCard() }, ic(SVG.close))));
     // the artwork
@@ -513,9 +694,11 @@
     const rb = (dir, label, fn, dis) => E("button", { type: "button", class: "r4c-round r4c-" + dir, "aria-label": label, title: label, disabled: !!dis, onclick: fn }, ic(dir === "prev" ? SVG.left : SVG.right));
     if (n > 1) box.append(rb("prev", "Previous slide", () => { c.slide = sl - 1; drawCard(); }, sl <= 0), rb("next", "Next slide", () => { c.slide = sl + 1; drawCard(); }, sl >= n - 1));
     art.append(E("div", { class: "r4c-stage r4tv-stage" }, box));
+    const hint = E("p", { class: "r4pin-hint", text: "Click the spot you want to pin a comment on. Press Esc to stop." }); hint.hidden = !(window.R4PIN && R4PIN.on()); art.append(hint);
+    if (window.R4PIN && m && m.type === "image") R4PIN.attach(box, { pins: pinsOf(i, m), placeholder: "Write your comment on this spot", onPost: canAct() && !i.dropped_at ? (x, y, t) => pinSave(i, m, x, y, t) : null });
     if (n > 1) art.append(E("p", { class: "r4c-under", text: `${sl + 1} of ${n}` + (m && m.label ? " · " + String(m.label).replace(/^\s*\d+[\s.:)-]+/, "") : "") }));
     // the right column: the decision, a comment, the tools, the details, the caption
-    const col = E("div", { class: "r4c-col" }, decisionBox(i), commentBox(i), toolsBox(i), c.info ? infoBox(i) : null, detailsBox(i), captionBox(i));
+    const col = E("div", { class: "r4c-col" }, decisionBox(i), commentBox(i), toolsBox(i), pinsBox(i, m), c.info ? infoBox(i) : null, detailsBox(i), captionBox(i));
     const flash = c.flash ? E("div", { class: "r4c-flash", role: "status" }, ic(SVG.check, "r4c-tick"), E("p", {}, E("b", { text: c.flash }))) : null;
     const keepY = card.querySelector(".r4c-col")?.scrollTop || 0;
     card.replaceChildren(head, E("div", { class: "r4c-body" }, flash, E("div", { class: "r4c-split" }, art, col)));
@@ -573,20 +756,17 @@
     const c = TV.card, team = i.audience === "team";
     const tool = (key, icon, label, title, fn, o) => E(o && o.href ? "a" : "button", Object.assign({ class: "r4tv-tool", "data-tool": key, title, "aria-label": title, onclick: fn },
       o && o.href ? { href: o.href, target: "_blank", rel: "noopener" } : { type: "button" }, o && o.pressed != null ? { "aria-pressed": String(o.pressed) } : {}, o && o.dis ? { disabled: true } : {}), ic(icon, "r4tv-ti"), E("span", { text: label }));
-    const frame = (label) => () => inFrame(i, label);
     const list = [
-      tool("draw", SVG.draw, "Draw", "Draw on the artwork (opens the full card)", frame("Draw"), { dis: !canAct() || !!i.dropped_at }),
-      tool("pin", SVG.pin, "Pin", "Pin a comment (opens the full card)", frame("Pin"), { dis: !canAct() || !!i.dropped_at }),
-      tool("caption", SVG.caption, "Edit caption", "Edit the caption in the preview (opens the full card)", frame("Edit caption"), { dis: !canAct() || !!i.dropped_at }),
-      tool("fixcap", SVG.fix, "Fix caption", "Fix caption: edit it directly, it saves straight to the piece (opens the full card)", frame("Fix caption|Add caption"), { dis: !canAct() || !!i.dropped_at }),
-      tool("team", SVG.team, team ? "Team only" : "For client", team ? "Team only. Make it for the client (opens the full card)" : "For the client. Make it team only (opens the full card)", frame("Team only|For client"), { pressed: team, dis: !canAct() || !!i.dropped_at }),
+      // Lee, 26 Nov 2026: Draw and Fix caption are gone from our view; Pin and Edit caption work here, in this card
+      tool("pin", SVG.pin, (window.R4PIN && R4PIN.on()) ? "Done pinning" : "Pin", "Pin a comment on the artwork (C)", () => { if (window.R4PIN) R4PIN.toggle(); }, { pressed: !!(window.R4PIN && R4PIN.on()), dis: !canAct() || !!i.dropped_at || !((i.media || []).some((x) => x.type === "image")) }),
+      tool("caption", SVG.caption, c.capEdit != null ? "Editing" : "Edit caption", "Edit the caption here", () => { if (c.cap == null) return; c.capEdit = c.capEdit != null ? null : String(c.cap || ""); drawCard(); setTimeout(() => document.querySelector("#r4tvc .r4tv-capta")?.focus(), 30); }, { pressed: c.capEdit != null, dis: !canAct() || !!i.dropped_at || c.cap == null }),
       tool("info", SVG.info, "More info", "More info: the title, version and batch", () => { c.info = !c.info; drawCard(); }, { pressed: !!c.info }),
       tool("link", SVG.link, "Copy link", "Copy the client's link to this piece", (e) => copyLink(i, e.currentTarget)),
       i.figma_url ? tool("figma", SVG.figma, "Open in Figma", "Open in Figma", null, { href: i.figma_url }) : tool("figma", SVG.figma, "Figma", "No Figma link saved for this piece yet", () => say("No Figma link saved for this piece yet."), { dis: false }),
-      i.figma_url ? tool("told", SVG.told, "Edited in Figma", "Edited in Figma: tell the session I edited it in Figma (opens the full card)", frame("Edited in Figma"), { dis: !canAct() || !!i.dropped_at }) : null,
+      i.figma_url ? tool("told", SVG.told, "Edited in Figma", "Edited in Figma: tell the session I edited it in Figma", (e) => figmaTold(i, e.currentTarget), { dis: !canAct() || !!i.dropped_at }) : null,
     ].filter(Boolean);
     return E("section", { class: "r4c-box r4tv-tools", "aria-label": "Tools" }, E("h3", { text: "Tools" }), E("div", { class: "r4tv-tgrid" }, ...list),
-      E("p", { class: "r4tv-hint", text: nw("Draw, Pin, Edit caption, Fix caption, Team only and Edited in Figma open the full editing card on this piece. Close it to come back here.") }));
+      );
   }
   function infoBox(i) {
     const rows = [["Title", i.title], ["Version", String(i.version || 1)], ["Batch", i.batch || ""], ["Uploaded", i.created_at ? dayLabel(i.created_at) : ""],
@@ -597,11 +777,40 @@
   function detailsBox(i) {
     const s = cs6(i);
     const rows = [["Stage", LABEL[s] + (i.noclient ? " (skipped the client)" : "")], ["Goes out", dateOf(i) ? dayLabel(dateOf(i)) + (i.date_confirmed === false && !i.scheduled_for ? ", to be confirmed" : "") : ""],
-      ["Type", typeOfW(i)], ["How it runs", PROMO[i.promo] || ""], ["Campaign", i.campaign || ""], ["For", i.audience === "team" ? "Team only" : "The client"]].filter((r) => r[1]);
+      ["Type", typeOfW(i)], ["How it runs", PROMO[i.promo] || ""], ["Campaign", i.campaign || ""]].filter((r) => r[1]);
     return E("section", { class: "r4c-box r4c-details", "aria-label": "Details" }, E("dl", { class: "r4c-dl" }, ...rows.flatMap(([a, b]) => [E("dt", { text: a }), E("dd", { text: b })])));
+  }
+  function pinsBox(i, m) {
+    if (!window.R4PIN || !m || m.type !== "image") return null;
+    const list = pinsOf(i, m); if (!list.length) return null;
+    return E("section", { class: "r4c-box r4pin-listbox", "aria-label": "Pins on the artwork" }, E("h3", { text: `Pins on this ${(i.media || []).length > 1 ? "slide" : "picture"} (${list.length})` }),
+      E("ol", { class: "r4pin-list" }, ...list.map((q, k) => E("li", {}, E("button", { type: "button", class: "r4pin-li", onclick: () => R4PIN.highlight(k + 1) },
+        E("i", { text: String(k + 1) }), E("span", {}, E("b", { text: q.text || "(no words)" }), E("small", { text: [q.who, q.when ? dayLabel(q.when) : ""].filter(Boolean).join(" · ") })))))));
+  }
+  // Edit caption, here in the card: saved as Release 3's Edit caption saves it (its send(): a "change" note whose marks
+  // carry text_edit, the comment "I edited the caption."), so the session makes the new version
+  async function capSave(i, btn) {
+    const c = TV.card, ta = document.querySelector("#r4tvc .r4tv-capta"); if (!c || !ta) return;
+    const v = ta.value; c.capEdit = v;
+    if (v.trim() === String(c.cap || "").trim()) { c.capEdit = null; drawCard(); return; }
+    btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      const m = (i.media || [])[Math.max(0, Math.min(c.slide, (i.media || []).length - 1))] || { id: "text" };
+      await teamNote(i, m.id || "text", "change", "I edited the caption.", { text_edit: v }, { edited: true });
+      c.capEdit = null; c.flash = "Caption change sent. The session will make the new version with your words."; c.capFor = null; readCaption(i); drawCard();
+    } catch (e) { btn.disabled = false; btn.textContent = "Save"; say("That didn't save: " + e.message, "err"); }
   }
   function captionBox(i) {
     const c = TV.card;
+    if (c.capEdit != null) {
+      const ta = E("textarea", { class: "r4c-ta r4tv-capta", rows: "9", maxlength: "10000", "aria-label": "Caption" }); ta.value = c.capEdit;
+      ta.addEventListener("input", () => { c.capEdit = ta.value; });
+      ta.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); c.capEdit = null; drawCard(); } });
+      const save = E("button", { type: "button", class: "r4c-btn r4c-sm r4c-main", "data-act": "cap-save", onclick: (e) => capSave(i, e.currentTarget) }, "Save");
+      return E("section", { class: "r4c-box r4c-caption r4tv-capedit" }, E("h3", { text: "Edit the caption" }), ta,
+        E("p", { class: "r4tv-hint", text: nw("Saving sends your words as a change, so the session makes the new version.") }),
+        E("div", { class: "r4c-row" }, save, E("button", { type: "button", class: "r4c-btn r4c-sm", "data-act": "cap-cancel", onclick: () => { c.capEdit = null; drawCard(); } }, "Cancel")));
+    }
     if (c.cap == null) return E("section", { class: "r4c-box r4c-caption" }, E("h3", { text: "Caption" }), E("p", { class: "r4c-captext r4tv-dim", text: "Loading the caption…" }));
     let t = String(c.cap || "");
     try { t = typeof mainCaption === "function" ? mainCaption(t) : t.trim(); } catch (e) {}
@@ -616,14 +825,17 @@
     return sec;
   }
   // Copy link: the same address Release 3's card copies (the client's link to this piece), and the same warnings
+  // Copy link: the client's own address for a piece the client can see; our board's address (behind our sign-in) for one
+  // they cannot see yet (work in progress, Internal review, team-only, dropped), which their page could never open
+  const BOARD_URL = "https://m7alpha-board.pages.dev/";
+  const clientSees = (i) => !i.dropped_at && i.audience !== "team" && ["needs_client", "approved"].includes(i.stage);
   async function copyLink(i, b) {
-    const u = `${CLIENT_URL}?c=${encodeURIComponent(S.code)}&p=${i.id.slice(0, 8)}`;
+    const theirs = clientSees(i);
+    const u = `${theirs ? CLIENT_URL : BOARD_URL}?c=${encodeURIComponent(S.code)}&p=${i.id.slice(0, 8)}`;
     const lab = b && b.querySelector("span:last-child"); const was = lab ? lab.textContent : "";
     const ok = await copyText(u);
-    if (lab) { lab.textContent = ok ? "Copied" : was; setTimeout(() => { if (lab.isConnected) lab.textContent = was; }, 2500); }
-    if (i.audience === "team") say("Copied, but this is a team-only piece: the client will never see it.");
-    else if (!["needs_client", "approved"].includes(i.stage)) say("Copied, but the client won't see this piece until you move it to client review.");
-    else say(ok ? "Link copied." : "");
+    if (lab) { lab.textContent = ok ? (theirs ? "Client link copied" : "Team link copied") : was; setTimeout(() => { if (lab.isConnected) lab.textContent = was; }, 2500); }
+    say(!ok ? "" : theirs ? `Client link copied: ${cname()} can open it.` : "Team link copied: it opens on our board, behind the M7Alpha sign-in. The client can't see this piece yet.");
   }
   // a tool that lives in Release 3's own card: open that card on this piece (the page's own window) and press the tool there
   function inFrame(i, labels) {
@@ -729,7 +941,7 @@
   try { if (typeof setClientView === "function") { const b = setClientView; setClientView = function (on) { if (on) { closeCard({ quiet: true }); document.body.classList.remove("r4tv"); } return b.apply(this, arguments); }; } } catch (e) {}
 
   window.R4TV = {
-    on: teamOn, go, content, open: (id, o) => open(id, o), close: () => closeCard(),
+    on: teamOn, go, content, select: () => ({ on: SEL.on, ids: [...SEL.ids], phase: SEL.phase, k: SEL.k, n: SEL.n, result: SEL.result }), open: (id, o) => open(id, o), close: () => closeCard(),
     state: () => ({ page: R4.page, tab: S.tab, cs: Object.assign({}, TV.cs), card: TV.card ? { id: TV.card.id, run: TV.card.run.length, mode: TV.card.mode, flash: TV.card.flash } : null, loaded: loaded() }),
   };
   // the page may already be drawn as the team (a reload): draw once more now that this file is here

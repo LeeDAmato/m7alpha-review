@@ -32,6 +32,7 @@
 <link rel="stylesheet" href="r4_theme.css">
 <link rel="stylesheet" href="r4_pages.css">
 <link rel="stylesheet" href="r4_card.css">
+<link rel="stylesheet" href="r4_pin.css">
 <link rel="stylesheet" href="r4_merge.css">
 <link rel="stylesheet" href="r4_tour.css">
 <link rel="stylesheet" href="r4_tv.css">
@@ -41,6 +42,8 @@
 <link rel="stylesheet" href="r4p_card.css">
 <script>addEventListener("popstate",function(e){try{if(window.R4PC&&typeof R4PC.backFirst==="function"&&R4PC.backFirst())e.stopImmediatePropagation()}catch(x){}},true);</script>
 <link rel="stylesheet" href="r4_team.css">
+
+<script>(function(){try{var q=new URLSearchParams(location.search),p=q.get("p");if(!p||q.get("in")||q.get("ids")||!/^[0-9a-f]{4,36}$/i.test(p)||!matchMedia("(min-width: 901px)").matches)return;q.delete("p");q.set("page","content");q.set("open",p.toLowerCase());history.replaceState(history.state,"",location.pathname+"?"+q.toString()+location.hash)}catch(e){}})();</script>
 
 <style>html.r4-boot,html.r4-boot body{background:#E7E8EA!important;background-image:none!important}html.r4-boot.r4-bootn,html.r4-boot.r4-bootn body{background:#050505!important}html.r4-boot body>*,html.r4-boot body::before,html.r4-boot body::after{visibility:hidden!important}html.r4-boot::after{content:"Loading your work\2026";position:fixed;left:0;right:0;top:46%;text-align:center;font:500 15px/1.4 Inter,system-ui,sans-serif;color:#5A5A5A}html.r4-boot.r4-bootn::after{color:#B8B8B8}</style>
 <script>(function(){try{var q=new URLSearchParams(location.search),d=document.documentElement,mo=null,since=0,soft=false;if(!(q.get("c")||q.get("u")||location.hash.length>1)||q.get("in")||!matchMedia("(min-width: 901px)").matches)return;var data=function(){try{return!!S.data}catch(e){return false}};var loading=function(app){return!app.firstElementChild||/^\s*Loading your work/.test(app.textContent||"")};var blank=function(){d.classList.add("r4-boot");since=Date.now();try{if(JSON.parse(localStorage.getItem("m7r-night")))d.classList.add("r4-bootn")}catch(e){}};var show=function(){d.classList.remove("r4-boot","r4-bootn")};var stop=function(){show();if(mo){mo.disconnect();mo=null}};blank();var check=function(){var b=document.body;if(!b)return;if(b.classList.contains("r4"))return stop();if(data()){if(mo){mo.disconnect();mo=null}return}var app=document.getElementById("app");if(!app||!app.firstElementChild)return;if(!loading(app)){if(d.classList.contains("r4-boot")){show();soft=true}}else if(soft&&!d.classList.contains("r4-boot")){soft=false;blank()}};mo=new MutationObserver(check);mo.observe(d,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});var tick=function(){if(d.classList.contains("r4-boot")){var app=document.getElementById("app"),wait=Date.now()-since;if(wait>=25e3||wait>=8e3&&(data()||!app||!loading(app))){show();soft=false}}else if(data()||!mo||!soft)return;setTimeout(tick,1e3)};setTimeout(tick,1e3)}catch(e){}})();</script>
@@ -92,6 +95,7 @@ Please read those frames fresh from Figma and take my changes as the latest vers
 <script src="r4_data.js"></script>
 <script src="r4_shell.js"></script>
 <script src="r4_core.js"></script>
+<script src="r4_pin.js"></script>
 <script src="r4_pages.js"></script>
 <script src="r4_merge.js"></script>
 <script src="r4_tour.js"></script>

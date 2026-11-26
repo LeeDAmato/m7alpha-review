@@ -27,7 +27,10 @@
   // ---------- when the cards may show ----------
   function allowed() {
     try {
-      return !!(TEAM.on && !TEAM.client && WIDEQ.matches && MOUSE.matches && !W.picking && S.tab === "work"
+      // [26 Nov, evening] Release 4's team Content (r4_tv.js) counts as All work however it was reached: live, Content
+      // opened from the address or the menu kept the remembered tab ("review"), so the tiles never grew
+      const onContent = S.tab === "work" || !!(window.R4TV && R4TV.on() && window.R4 && R4.page === "content" && document.querySelector("#work.r4tv-content"));
+      return !!(TEAM.on && !TEAM.client && WIDEQ.matches && MOUSE.matches && !W.picking && onContent
         && document.getElementById("work") && !document.getElementById("wover")
         && !(typeof EMBED !== "undefined" && EMBED) && !(typeof INLIB !== "undefined" && INLIB));
     } catch (e) { return false; }

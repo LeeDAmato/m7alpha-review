@@ -329,8 +329,61 @@
     const art = E("div", { class: "r4c-art" }); C.refs.art = art;
     drawArt(p, shape);
     // the comment box sits right under the answer (Ask for changes needs it), then the details and the caption
-    const col = E("div", { class: "r4c-col" }, answerBox(p, shape), commentsBox(p, shape), detailsBox(p), captionBox(p));
+    const col = E("div", { class: "r4c-col" }, answerBox(p, shape), commentsBox(p, shape), pinsBox(p), detailsBox(p), captionBox(p));
     return E("div", { class: "r4c-body" }, flashLine(), E("div", { class: "r4c-split" }, art, col));
+  }
+  // ---------- pins on the artwork, Figma style (Lee, 26 Nov 2026; r4_pin.js draws them) ----------
+  // Release 3's own pins: a note whose marks hold { strokes: [], pins: [{ x, y, text }] } for the picture shown (its media
+  // id is the note's variant). Saved with the same submit_feedback call as Release 3's Pin tool; a pin counts as a change.
+  const PIN_SVG = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17.5s5-4.6 5-9a5 5 0 0 0-10 0c0 4.4 5 9 5 9z"/><circle cx="10" cy="8.5" r="1.8"/></svg>';
+  function pinsOf(p, media) {
+    const it = p.it; if (!it || !media) return [];
+    return (it.feedback || []).filter((f) => !f.withdrawn && f.item_version === it.version && f.variant_id === media.id && f.marks && Array.isArray(f.marks.pins))
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .flatMap((f) => f.marks.pins.map((q) => ({ x: +q.x, y: +q.y, text: q.text || f.comment || "", who: f.reviewer || "", when: f.created_at })));
+  }
+  const shownMedia = (p) => { const sz = sizesOf(p); if (sz) return [sz.portrait, sz.tall]; const m = p.media || []; return m.length ? [m[Math.max(0, Math.min(C.slide, m.length - 1))]] : []; };
+  function pinHint() { const h = E("p", { class: "r4pin-hint", text: "Click the spot you want to comment on. Press Esc to stop." }); h.hidden = !(window.R4PIN && R4PIN.on()); return h; }
+  function pinsOn(p, box, media, start) {
+    if (!window.R4PIN || !media) return;
+    const can = !!(p.it && p.waiting);
+    R4PIN.attach(box, { pins: pinsOf(p, media), start: start || 0, placeholder: "Write your comment on this spot", onPost: can ? (x, y, t) => pinSave(p, media, x, y, t) : null });
+  }
+  function pinsBox(p) {
+    const it = p.it; if (!it || !window.R4PIN || !(p.media || []).some((m) => m.type === "image")) return null;
+    const list = shownMedia(p).flatMap((m) => pinsOf(p, m));
+    const tog = E("button", { type: "button", class: "r4c-btn r4c-sm r4pin-tog", "data-r4pin-toggle": "1", "data-r4pin-label": "Pin a comment", "aria-pressed": String(R4PIN.on()), disabled: !p.waiting,
+      title: "Pin a comment on the artwork (C)", onclick: () => R4PIN.toggle() }, ic(PIN_SVG), E("span", { class: "r4pin-tl", text: R4PIN.on() ? "Done pinning" : "Pin a comment" }));
+    return E("section", { class: "r4c-box r4pin-listbox", "aria-label": "Pins on the artwork" }, E("h3", { text: list.length ? `Pins on the artwork (${list.length})` : "Pins on the artwork" }),
+      list.length ? E("ol", { class: "r4pin-list" }, ...list.map((q, k) => E("li", {}, E("button", { type: "button", class: "r4pin-li", onclick: () => R4PIN.highlight(k + 1) },
+        E("i", { text: String(k + 1) }), E("span", {}, E("b", { text: q.text || "(no words)" }), E("small", { text: [q.who, dayShort(q.when)].filter(Boolean).join(" · ") })))))) : null,
+      E("div", { class: "r4c-row" }, tog));
+  }
+  async function pinSave(p, media, x, y, text) {
+    const it = p.it;
+    if (String(it.id).startsWith("demo-")) { say("This is a sample, so nothing is sent.", "err"); return false; }
+    if (refuse()) return false;
+    if (S.sending || C.busy) return false;
+    let name = null; C.busy = true; try { name = await askName(false); } finally { C.busy = false; }
+    if (!name) return false;
+    const args = { p_code: S.code, p_passcode: S.pass, p_item_id: it.id, p_item_version: it.version, p_variant_id: media.id, p_reviewer: name, p_decision: "comment",
+      p_comment: "", p_marks: { strokes: [], pins: [{ x, y, text }] }, p_choice: null };
+    if (typeof EMBED === "undefined" || !EMBED) args.p_edit_key = editKey();
+    S.sending = true;
+    try {
+      const res = await rpc("submit_feedback", args);
+      S.sending = false;
+      if (!res || !res.ok) { say(res && res.error === "stale" ? "This piece was just updated. Please have another look." : "That didn't save. Please try again.", "err"); return false; }
+      // the note shows at once (the reload below brings the stored one)
+      const mine = { id: res.id || "local-" + Date.now(), reviewer: name, decision: "comment", comment: "", marks: args.p_marks, variant_id: media.id, item_version: it.version, created_at: new Date().toISOString(), internal: false };
+      it.feedback = [...(it.feedback || []), mine];
+      try { const rnd = (S.data && S.data.rounds || []).find((r) => r.items.some((x) => x.id === it.id)) || null;
+        SENT.set(it.id, { at: Date.now(), item: Object.assign({}, it), round: rnd && Object.assign({}, rnd, { items: [] }), pos: rnd ? rnd.items.findIndex((x) => x.id === it.id) : 0, editing: false, noteId: res.id || null, before: {}, local: mine, approved: false, noClient: false, hold: false, released: false }); } catch (e) {}
+      drawArt(p, C.shape);
+      say("Pinned. Your comment is with the team.", "ok");
+      refreshAll().then(() => { if (C.root && C.mode === "card" && C.id === it.id) { const q = cur(); if (q && q.it) { const had = (q.it.feedback || []).some((f) => f.id === mine.id); if (!had) q.it.feedback = [...(q.it.feedback || []), mine]; drawArt(q, C.shape); } } });
+      return true;
+    } catch (e) { S.sending = false; say("That didn't save. Please check your connection and try again.", "err"); return false; }
   }
   function drawArt(p, shape) {
     const art = C.refs.art; if (!art) return;
@@ -341,7 +394,8 @@
         return { box, m, fig: E("figure", { class: "r4c-fig" }, box, E("figcaption", {}, E("b", { text: a }), " · " + b)) };
       });
       const stage = E("div", { class: "r4c-stage r4c-pair" }, ...figs.map((f) => f.fig));
-      art.replaceChildren(stage);
+      art.replaceChildren(stage, pinHint());
+      let off = 0; figs.forEach((f) => { pinsOn(p, f.box, f.m, off); off += pinsOf(p, f.m).length; });
       watchFit(stage, () => fitBoxes(stage, figs.map((f) => f.box), figs.map((f) => ratioFor(f.m)), 26, 34));
       return;
     }
@@ -349,7 +403,9 @@
     const box = E("div", { class: "r4c-fit" }, mediaEl(m[k], cleanTitle(p.title) + (n > 1 ? `, ${U.toLowerCase()} ${k + 1} of ${n}` : ""), p));
     if (n > 1) box.append(roundBtn("prev", `Previous ${U.toLowerCase()}`, () => setSlide(k - 1), k <= 0), roundBtn("next", `Next ${U.toLowerCase()}`, () => setSlide(k + 1), k >= n - 1));
     const stage = E("div", { class: "r4c-stage" }, box);
-    art.replaceChildren(...[stage, n > 1 ? E("p", { class: "r4c-under", "aria-live": "polite", text: `${U} ${k + 1} of ${n}` + (lab(m[k]) && !/^(slide|page|post|feed)\s*\d*$/i.test(lab(m[k])) ? " · " + lab(m[k]) : "") }) : null].filter(Boolean));
+    art.replaceChildren(...[stage, n > 1 ? E("p", { class: "r4c-under", "aria-live": "polite", text: `${U} ${k + 1} of ${n}` + (lab(m[k]) && !/^(slide|page|post|feed)\s*\d*$/i.test(lab(m[k])) ? " · " + lab(m[k]) : "") }) : null, pinHint()].filter(Boolean));
+    if (m[k] && m[k].type === "image") pinsOn(p, box, m[k]);
+    const pl = C.card && C.card.querySelector(".r4pin-listbox"); if (pl) pl.replaceWith(pinsBox(p));
     watchFit(stage, () => fitBoxes(stage, [box], [ratioFor(m[k])], 0, 0));
     // the next picture is fetched ahead, so the arrow shows it at once
     const nx = m[k + 1]; if (nx && nx.type === "image") { const im = new Image(); im.src = mediaUrl(nx.path); }
@@ -953,6 +1009,8 @@
     const [line, tone] = sideLine(p);
     const shape = p.panel ? "doc" : shapeOf(p);
     const pic = p.thumb ? E("div", { class: "r4c-sthumb" }, E("img", { src: p.thumb, alt: cleanTitle(p.title), decoding: "async" })) : null;
+    // the pins already on its first picture (read only here: the piece has been answered)
+    try { const m0 = (p.media || [])[0]; if (pic && window.R4PIN && m0 && m0.type === "image" && pinsOf(p, m0).length) R4PIN.attach(pic, { pins: pinsOf(p, m0) }); } catch (e) {}
     const det = detailsBox(p);
     const acts = activity(p);
     const actBox = E("section", { class: "r4c-box r4c-activity", "aria-label": "Activity" }, E("h3", { text: "Activity" }),
