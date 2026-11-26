@@ -93,7 +93,8 @@
   // ---------- the page ----------
   function lists() {
     const all = st.data.leads || [];
-    return { open: all.filter((l) => l.place === "open"), older: all.filter((l) => l.place === "older"), archive: all.filter((l) => l.place === "archive"), all };
+    // 26 Nov 2026 (Lee): no Older tab anywhere. Any lead still marked "older" (or with no place) shows in the main list.
+    return { open: all.filter((l) => l.place !== "archive"), archive: all.filter((l) => l.place === "archive"), all };
   }
   function draw() {
     const ctx = st.ctx, h = ctx.h, d = st.data;
@@ -107,7 +108,6 @@
     const noOut = counted.filter((l) => l.place !== "archive" && pending(l)).length;
     const newWeek = counted.filter((l) => (daysSince(l.at) ?? 99) < 7).length;
     const tabs = [["open", s.open_label, L.open.length]];
-    if (s.older_label) tabs.push(["older", s.older_label, L.older.length]);
     tabs.push(["archive", "Archive", L.archive.length], ["summary", "Summary"]);
     if (s.summary_kind === "ff") tabs.push(["courses", "Courses"]);
     if (s.summary_kind === "newark") tabs.push(["courses", "Year groups"]);
@@ -130,7 +130,7 @@
   }
   function chip(k, label, n, title) {
     return st.ctx.h("button", { type: "button", class: "ld-chip" + (n ? " ld-warm" : ""), "aria-pressed": String(st.remind === k), title,
-      onclick: () => { st.remind = st.remind === k ? "" : k; if (st.tab !== "open" && st.tab !== "older") st.tab = "open"; st.limit = 100; draw(); } },
+      onclick: () => { st.remind = st.remind === k ? "" : k; if (st.tab !== "open") st.tab = "open"; st.limit = 100; draw(); } },
       st.ctx.h("b", { text: String(n) }), " " + label);
   }
   function head() {
@@ -217,8 +217,7 @@
   function listView(rows) {
     const ctx = st.ctx, h = ctx.h, s = S();
     const out = sorted(filtered(rows)), shown = out.slice(0, st.limit);
-    const intro = st.tab === "older" ? "Enquiries that came in before Monday of last week and still have no outcome. They move here every Monday, as on the sheet. They still count."
-      : st.tab === "archive" ? "Enquiries with a final outcome (" + (s.final_outcomes || []).join(" or ") + ") move here by themselves. Use “Put back” to bring one back." : null;
+    const intro = st.tab === "archive" ? "Enquiries with a final outcome (" + (s.final_outcomes || []).join(" or ") + ") move here by themselves. Use “Put back” to bring one back." : null;
     const wrap = h("section", { class: "ld-list" }, filterBar(rows), intro ? h("p", { class: "ld-sub", text: intro }) : null,
       h("p", { class: "ld-count", "aria-live": "polite", text: out.length === rows.length ? `${rows.length} ${rows.length === 1 ? "enquiry" : "enquiries"}` : `${out.length} of ${rows.length} enquiries` }));
     if (!out.length) { wrap.append(h("p", { class: "ld-empty", text: rows.length ? "Nothing matches. Try clearing the search or filters." : "Nothing here yet." })); return wrap; }
@@ -360,7 +359,7 @@
       h("dl", { class: "ld-facts" }, facts.map(([k, v]) => h("div", { class: "ld-fact" }, h("dt", { text: k }), h("dd", { text: v })))),
       who.length ? h("p", { class: "ld-whos" }, who.map(([f, b, at]) => h("span", { text: `${f}: ${b}${at ? ", " + fmtWhen(at) : ""}` }))) : null,
       h("div", { class: "ld-row" },
-        l.place !== "open" ? h("button", { type: "button", class: "ld-btn ld-sm", text: "Put back on " + s.open_label, onclick: () => putBack(l) }) : null,
+        l.place === "archive" ? h("button", { type: "button", class: "ld-btn ld-sm", text: "Put back on " + s.open_label, onclick: () => putBack(l) }) : null,
         h("button", { type: "button", class: "ld-btn ld-sm", text: l.dup_of ? "Not a duplicate" : "Mark as duplicate", onclick: () => markDup(l) }),
         h("button", { type: "button", class: "ld-btn ld-sm", text: "Changes to this enquiry", onclick: async (e) => {
           const at = e.target.closest(".ld-detail"); const list = await historyList(l.id); at.querySelector(".ld-lh")?.remove(); at.append(h("div", { class: "ld-lh" }, list)); } })));
@@ -411,7 +410,7 @@
 
   // ---------- changes (undo history) ----------
   const FIELD = { outcome: "Outcome", notes: "Notes", last_contacted: "Last contacted", place: "Moved", duplicate: "Duplicate", added: "Added", input: "Summary box" };
-  const PLACE = (v) => v === "open" ? S().open_label : v === "older" ? S().older_label : v === "archive" ? "Archive" : v;
+  const PLACE = (v) => v === "open" ? S().open_label : v === "older" ? (S().older_label || "Older enquiries") : v === "archive" ? "Archive" : v;
   async function historyList(leadId) {
     const h = st.ctx.h;
     let r; try { r = await call("leads_history", { p_lead: leadId || null, p_limit: leadId ? 50 : 300 }); } catch (e) { return h("p", { class: "ld-empty", text: "The changes didn't load." }); }
@@ -475,7 +474,7 @@
       h("h2", { class: "ld-h2", text: "By ad" }), tbl(["Ad", "Leads", "Followed up", "Signed", "Ad spend", "Cost per lead", "Cost per signed landlord"], adRows),
       h("h2", { class: "ld-h2", text: "By month" }), h("p", { class: "ld-sub", text: "Leads count in the month they came in. Signings count in the month the outcome was first recorded, so the newest month looks weaker at first." }),
       tbl(["Month", "Leads", "Signed", "Ad spend", "Cost per lead", "Cost per signed landlord"], monthRows),
-      h("p", { class: "ld-sub", text: "“Followed up” means any outcome other than Pending. Marked duplicates and our test enquiries are left out. Leads, " + (s.older_label || "") + " and Archive all count." }));
+      h("p", { class: "ld-sub", text: "“Followed up” means any outcome other than Pending. Marked duplicates and our test enquiries are left out. " + (s.open_label || "Leads") + " and Archive both count." }));
   }
   function fig(label, value, tone) { const h = st.ctx.h; return h("div", { class: "ld-fig" + (tone ? " ld-" + tone : "") }, h("b", { text: String(value) }), h("span", { text: label })); }
   function courseCodes(l) { return String(val(l, "course code") || val(l, "Ref") || "").split(/\n|,/).map((x) => x.trim()).filter(Boolean); }
@@ -671,7 +670,6 @@
       return { name, rows: out, widths, freeze: hr, filter: [hr, heads.length] };
     };
     const sheets = [listSheet(s.open_label, L.open, s.summary_kind === "hk", false)];
-    if (s.older_label) sheets.push(listSheet(s.older_label, L.older, false, false));
     sheets.push(listSheet("Archive", L.archive, false, true));
     // Summary tab: the figures as shown on the page
     const sumEl = summary(); const sumRows = [[{ v: "Summary", s: 6 }], []];
