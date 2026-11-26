@@ -161,7 +161,8 @@
     const vw = document.documentElement.clientWidth, vh = innerHeight;
     let l = M, t = M;
     const side = document.getElementById("sidenav");
-    if (side && getComputedStyle(side).display !== "none" && getComputedStyle(side).position === "fixed") { const r = side.getBoundingClientRect(); if (r.right > 0 && r.left < 4) l = Math.max(l, r.right + M); }
+    // [PART R4-tv, 26 Nov] Release 4's menu for our view is not fixed and sits 12 px in from the edge, inside the page's frame
+    if (side && getComputedStyle(side).display !== "none" && (getComputedStyle(side).position === "fixed" || document.body.classList.contains("r4"))) { const r = side.getBoundingClientRect(); if (r.right > 0 && r.left < 40) l = Math.max(l, r.right + M); }
     for (const q of ["#teambar", "header.top"]) {
       const e = document.querySelector(q); if (!e) continue;
       const cs = getComputedStyle(e); if (cs.display === "none" || !/fixed|sticky/.test(cs.position)) continue;

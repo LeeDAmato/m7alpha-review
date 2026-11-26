@@ -1,0 +1,99 @@
+/* [PART R4-tv, 26 Nov 2026] Release 4 for our own M7Alpha view (r4_tv.js). Same Nexus look as the client's Release 4:
+   it reuses the --r4p-* page colours (r4_pages.css) and the card's --c-* colours (r4_card.css). Everything is under
+   body.r4.r4tv (or the card's own #r4tvc), so the client's view and phones never see it. Pure white cards are allowed in
+   Release 4; never #000000. */
+
+/* the page's own team band and its old "Internal review / All work" tabs are replaced by the side menu */
+body.r4.r4tv #teambar { display: none !important; }
+body.r4.r4tv { --tbh: 0px; }
+
+/* ---------- the menu: Sessions | Client Studio, and the small "Team" group ---------- */
+body.r4.r4tv .r4tv-sw { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; margin: 0 0 12px; border-radius: 12px; background: var(--r4p-inner, #F4F4F2); border: 1px solid var(--r4p-line, #EAEAE7); }
+body.r4.r4tv .r4tv-sw a { display: flex; align-items: center; justify-content: center; height: 32px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--r4p-ink2, #5A5A5A); text-decoration: none; }
+body.r4.r4tv .r4tv-sw a:hover { color: var(--r4p-ink, #111111); }
+body.r4.r4tv .r4tv-sw a[aria-current="page"] { background: var(--r4p-card, #FFFFFF); color: var(--r4p-ink, #111111); box-shadow: 0 1px 2px rgba(17, 17, 17, .08); }
+body.r4.night.r4tv .r4tv-sw a[aria-current="page"] { box-shadow: 0 0 0 1px #333333; }
+body.r4.r4tv .r4tv-glab { margin: 14px 14px 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--r4p-lab, #6D6D6D); }
+
+/* ---------- Home: our stage count ---------- */
+body.r4 .r4tv-stages { padding: 6px 8px; display: grid; }
+body.r4 .r4tv-strow { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border: 0; background: none; border-radius: 10px; text-align: left; width: 100%; }
+body.r4 .r4tv-strow + .r4tv-strow { border-top: 1px solid var(--r4p-line); border-radius: 0; }
+body.r4 .r4tv-strow:hover { background: var(--r4p-inner); border-radius: 10px; }
+body.r4 .r4tv-strow b { margin-left: auto; font-size: 16px; font-weight: 700; color: var(--r4p-ink); }
+body.r4 .r4tv-strow i { font-style: normal; color: var(--r4p-ink2); font-size: 16px; width: 10px; }
+body.r4 .r4tv-home .r4p-sec em { font-style: normal; font-size: 12.5px; color: var(--r4p-ink2); text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+/* ---------- Content: the page and its tiles (inside #work, so the team's grown tile finds them) ---------- */
+body.r4 .r4tv-content.work { padding: 0 0 16px; display: block; gap: 0; max-width: none; margin: 0; }
+body.r4 .r4tv-content .r4tv-checks { flex: none; }
+body.r4 .r4tv-content .r4tv-types { margin-top: -8px; }
+body.r4 .r4tv-content .r4p-tiles.r4p-wrap { row-gap: 20px; }
+body.r4 .r4tv-content .wt.r4tv-t { display: flex; flex-direction: column; flex: none; min-width: 0; position: relative; }
+body.r4 .r4tv-content .r4tv-pic { all: unset; position: relative; display: block; cursor: pointer; border-radius: 14px; }
+body.r4 .r4tv-content .r4tv-pic:focus-visible { outline: 2px solid var(--r4p-lime); outline-offset: 3px; }
+body.r4 .r4tv-content .thumb.r4tv-art { width: 100%; height: 100%; aspect-ratio: auto; display: block; position: relative; overflow: hidden; border-radius: 14px; flex: none; background: linear-gradient(160deg, #2b6c73, #163a40);
+  transition: transform .15s ease, box-shadow .15s ease; }
+body.r4 .r4tv-content .r4tv-pic:hover .thumb.r4tv-art { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(17, 17, 17, .16); }
+body.r4 .r4tv-content .thumb.r4tv-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+body.r4 .r4tv-content .thumb.r4tv-art.wart { flex-direction: row; background: linear-gradient(160deg, #4a5a78, #1e2638); }
+body.r4 .r4tv-content .thumb.r4tv-art.wart img { height: 100%; }
+body.r4 .r4tv-content .r4tv-artw { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 14px; font-size: 15px; font-weight: 700; line-height: 1.25; color: #FAF9F6; text-wrap: pretty; }
+body.r4 .r4tv-content .r4tv-shade { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(17,18,20,.92) 0%, rgba(17,18,20,.8) 34%, rgba(17,18,20,.36) 62%, rgba(17,18,20,0) 84%); }
+body.r4 .r4tv-content .r4tv-atl { position: absolute; left: 14px; right: 16px; bottom: 13px; font-size: 19px; font-weight: 800; line-height: 1.12; color: #FAF9F6; text-shadow: 0 1px 8px rgba(17,18,20,.4);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
+body.r4 .r4tv-content .r4tv-play { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(17,18,20,.62); display: grid; place-items: center; }
+body.r4 .r4tv-content .r4tv-play svg { width: 22px; height: 22px; fill: #FAF9F6; margin-left: 2px; }
+body.r4 .r4tv-content .r4tv-tl { position: absolute; top: 8px; left: 8px; z-index: 1; max-width: calc(100% - 16px); }
+body.r4 .r4tv-content .r4tv-tl .r4p-chip { box-shadow: 0 1px 3px rgba(17, 17, 17, .18); }
+body.r4 .r4tv-content .r4tv-n { position: absolute; top: 8px; right: 8px; z-index: 1; height: 22px; padding: 0 7px; border-radius: 7px; background: rgba(17,18,20,.72); color: #FAF9F6; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; }
+body.r4 .r4tv-content .r4tv-tl ~ .r4tv-n { top: 8px; }
+body.r4 .r4tv-content .r4tv-team { position: absolute; left: 8px; bottom: 8px; z-index: 1; height: 22px; padding: 0 8px; border-radius: 7px; background: #FAF9F6; color: #111214; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; box-shadow: 0 1px 3px rgba(17,17,17,.2); }
+body.r4 .r4tv-content .wt.gone .thumb.r4tv-art > img { filter: grayscale(1); opacity: .55; }
+body.r4 .r4tv-content .wt .r4p-meta { margin-top: 8px; }
+/* the team's grown tile (r4_team.js) copies the tile's picture: in Release 4 it fills its box, as on the tile */
+body.r4 .r4tg .r4tg-thumb.r4tv-art { background: linear-gradient(160deg, #2b6c73, #163a40); display: block; }
+body.r4 .r4tg .r4tg-thumb.r4tv-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+body.r4 .r4tg .r4tg-thumb.r4tv-art .r4tv-artw { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 18px; font-size: 22px; font-weight: 700; line-height: 1.2; color: #FAF9F6; }
+body.r4 .r4tg .r4tg-thumb.r4tv-art .r4tv-play { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(17,18,20,.62); display: grid; place-items: center; }
+body.r4 .r4tg .r4tg-thumb.r4tv-art .r4tv-play svg { width: 26px; height: 26px; fill: #FAF9F6; margin-left: 3px; }
+/* the stage label on the tiles: "Work in progress" uses the plain label colours */
+body.r4 .r4p-chip.r4p-c-plan { background: var(--r4p-sel); color: var(--r4p-ink2); }
+body.r4.night .r4p-chip.r4p-c-plan { background: #2B2B2B; color: #C4C4C4; }
+
+/* ---------- the opened piece: Release 4's card with our tools ---------- */
+body.r4 #r4tvc .r4tv-stage { padding: 0 22px; }
+body.r4 #r4tvc .r4tv-fit { max-width: 100%; }
+body.r4 #r4tvc .r4c-fit > .r4c-textart { padding: 18px; font-size: 14px; line-height: 1.5; color: var(--c-ink); white-space: pre-wrap; overflow: auto; height: 100%; }
+body.r4 #r4tvc .r4c-nomedia { display: grid; place-items: center; height: 100%; color: var(--c-ink2); font-size: 14px; }
+body.r4 #r4tvc .r4tv-row .r4c-btn { white-space: normal; text-align: center; line-height: 1.2; min-height: 40px; height: auto; padding: 9px 16px; }
+body.r4 #r4tvc .r4tv-asks { margin: -4px 0 12px; font-size: 13.5px; line-height: 1.45; color: var(--c-ink2); }
+body.r4 #r4tvc .r4tv-ask { background: var(--c-card); border-color: var(--c-ink); box-shadow: 0 0 0 3px var(--c-limew); }
+body.r4 #r4tvc .r4tv-cmt .r4c-row { margin-top: 10px; flex-wrap: nowrap; align-items: flex-start; }
+body.r4 #r4tvc .r4tv-hint { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--c-ink2); }
+body.r4 #r4tvc .r4tv-cmt .r4tv-hint { flex: 1; padding-top: 2px; }
+body.r4 #r4tvc .r4tv-tools .r4tv-hint { margin-top: 10px; }
+body.r4 #r4tvc .r4tv-tgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+body.r4 #r4tvc .r4tv-tool { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 62px; padding: 8px 4px 7px; border-radius: 12px;
+  border: 1px solid var(--c-line2); background: var(--c-card); color: var(--c-ink); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center; text-decoration: none; cursor: pointer; }
+body.r4 #r4tvc .r4tv-tool:hover:not(:disabled) { border-color: var(--c-ink); }
+body.r4 #r4tvc .r4tv-tool:disabled { opacity: .5; cursor: default; }
+body.r4 #r4tvc .r4tv-tool[aria-pressed="true"] { background: var(--c-sel); border-color: var(--c-ink); }
+body.r4 #r4tvc .r4tv-tool:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--c-limew); }
+body.r4 #r4tvc .r4tv-ti { display: inline-grid; place-items: center; }
+body.r4 #r4tvc .r4tv-ti svg { width: 20px; height: 20px; display: block; }
+body.r4 #r4tvc .r4tv-info { background: var(--c-inner); }
+body.r4 #r4tvc .r4tv-dim { color: var(--c-ink2); }
+@media (max-width: 1180px) { body.r4 #r4tvc .r4tv-tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* the green line after a save is drawn again with the card (the page redraws after every save): no fade-in, so it never shows half-faded */
+body.r4 #r4tvc .r4c-flash { animation: none; }
+/* our Tasks page (Release 3's Jobs list) in the Nexus colours, day and night */
+body.r4.r4tv .jlist { background: var(--r4p-card); border: 1px solid var(--r4p-line); box-shadow: var(--r4p-shadow); -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 18px; }
+body.r4.r4tv .jcols { color: var(--r4p-lab); border-bottom-color: var(--r4p-line); }
+body.r4.r4tv .jsec + .jsec { border-top-color: var(--r4p-line); }
+body.r4.r4tv .jsechead .fold, body.r4.r4tv .jname { color: var(--r4p-ink); }
+body.r4.r4tv .jsechead .n, body.r4.r4tv .jrow.done .jname .t { color: var(--r4p-ink2); }
+body.r4.r4tv .jrow { border-top-color: var(--r4p-line); }
+body.r4.r4tv .jrow:hover, body.r4.r4tv .jrow.on { background: var(--r4p-sel); }
+body.r4.r4tv .jtick { background: var(--r4p-card); border-color: var(--r4p-ink2); }
