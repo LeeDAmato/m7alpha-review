@@ -41,11 +41,9 @@
       help: ["Questions? Write to us", "Click Message M7Alpha to send us a note. Click How it works to see these tips again."],
       helpOnly: ["See these tips again", "Click How it works to see these tips again, on any page."],
     },
-    content: {      // [27 Nov 2026] Lee: about this page only (filters, a closer look, approve or ask, download and next), four cards
+    content: {      // [27 Nov 2026] Lee: about this page only (filters, a closer look); approve, download and next are in the open card
       find: ["Find a piece fast", "Type a word to search. Or click a button to see one kind, or one task. Click All to see everything again."],
       tile: ["Take a closer look", "Move your mouse over a picture to see it bigger. Click it to open the full piece."],
-      answer: ["Say yes, or ask for changes", "In the open piece, click Approve if it's ready. Or click Ask for changes and tell us what to fix."],
-      next: ["Save it, then the next one", "Click Download at the top to save every picture at full size. Click Next piece to keep going."],
     },
     calendar: {
       nav: ["Month or week", "Use the arrows to move a month at a time. Click Week to see seven days. Click Today to come back."],
@@ -66,7 +64,8 @@
       add: ["Ask for something new", "Click Add a task to give us a new job. You can also give one to someone on your team."],
     },
     card: {
-      answer: ["Approve, or ask for changes", "Happy with it? Click Approve. Want something changed? Click Ask for changes and tell us what."],
+      answer: ["Say yes, or ask for changes", "Click Approve if it's ready. Or click Ask for changes and tell us what to fix."],      // Lee's agreed words, 27 Nov
+      saveNext: ["Save it, then the next one", "Click Download to save every picture at full size. Click Next piece to keep going."],
       undo: ["Changed your mind?", "After you approve, the next piece opens by itself. A green line shows at the top. Click Undo there to take it back."],
       note: ["Leave a comment", "First choose {opts}. Then write your note and click Send."],
       noteOne: ["Leave a comment", "Write your note in the box. Then click Send."],
@@ -173,8 +172,6 @@
         return parts.length ? step(W.content.find, parts) : null;
       },
       () => { const t = contentTile(); return t ? step(W.content.tile, t) : null; },
-      () => { const t = contentTile(); return t ? step(W.content.answer, t.closest(".r4p-row") || t) : null; },
-      () => step(W.content.next, first("#app .r4p-content > .r4p-row")),
     ],
     calendar: [
       () => step(W.calendar.nav, first("#app .r4p-calnav")),
@@ -199,7 +196,6 @@
     ],
     card: [
       () => { const c = cardEl(); return c && step(W.card.answer, first(".r4c-answer:not(.r4c-done)", c)); },
-      () => { const c = cardEl(); if (!c || !first(".r4c-nav", c)) return null; return step(W.card.undo, first(".r4c-answer:not(.r4c-done) .r4c-btn.r4c-main", c)); },
       () => noteStep(W.card),
       () => {
         const c = cardEl(); if (!c) return null;
@@ -207,7 +203,11 @@
         if (cap) return step(/advert/i.test(txt(cap.querySelector("h3"))) ? W.card.adText : W.card.caption, cap);
         return step(W.card.article, first(".r4c-paper", c));
       },
-      () => { const c = cardEl(); return c && step(W.card.next, first(".r4c-nav", c)); },
+      () => {      // [27 Nov 2026] Lee: Content's tips 3 and 4 open with the card: Download and Next piece together
+        const c = cardEl(); if (!c) return null;
+        const parts = [first(".r4dl-all", c), first(".r4c-nav", c)].filter((x) => x && vis(x));
+        return parts.length ? step(W.card.saveNext, parts) : null;
+      },
     ],
     "card-doc": [
       () => { const c = cardEl(); return c && step(W["card-doc"].pages, first(".r4c-dochead", c)); },
