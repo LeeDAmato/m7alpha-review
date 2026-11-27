@@ -470,13 +470,15 @@
       pic, h("span", { class: "r4p-meta" }, h("b", { text: type }), meta ? " · " + meta : ""));
   }
   function rowEl(r, ps, opts) {
-    const o = opts || {}, wide = CS.wide.has(r.key);
+    // [27 Nov 2026] Lee: "I want all cards to be visible ... using multiple rows, instead of having a slider": every row wraps,
+    // no arrows and no "See all"
+    const o = opts || {}, wide = true;
     const waitN = r.pieces.filter((p) => p.waiting).length;
     const sub = o.lit ? countWords(r.pieces) : r.fromTask ? ["Task on Home", waitN ? `${waitN} to review` : "", r.by ? "answer by " + shortDay(r.by) : ""].filter(Boolean).join(" · ") : r.sub;
     const scroller = h("div", { class: "r4p-tiles" + (wide ? " r4p-wrap" : "") }, ...ps.map((p) => tile(p, r.key)));
     const more = h("button", { type: "button", class: "r4p-more r4p-next", "aria-label": "See more of " + r.title, hidden: true, html: "›", onclick: () => scroller.scrollBy({ left: scroller.clientWidth * .8, behavior: "smooth" }) });
     const back = h("button", { type: "button", class: "r4p-more r4p-prev", "aria-label": "Back", hidden: true, html: "‹", onclick: () => scroller.scrollBy({ left: -scroller.clientWidth * .8, behavior: "smooth" }) });
-    const all = h("button", { type: "button", class: "r4p-link r4p-seeall", hidden: !wide, onclick: () => { wide ? CS.wide.delete(r.key) : CS.wide.add(r.key); R4P.render("content", ROOT_EL, Object.assign({}, LAST.opts, { keepScroll: true })); } },
+    const all = h("button", { type: "button", class: "r4p-link r4p-seeall", hidden: true, onclick: () => { wide ? CS.wide.delete(r.key) : CS.wide.add(r.key); R4P.render("content", ROOT_EL, Object.assign({}, LAST.opts, { keepScroll: true })); } },
       wide ? "Show as one line" : `See all ${ps.length} ›`);
     const head = h("div", { class: "r4p-rowh" }, h("b", { text: r.title }), sub ? h("small", { text: sub }) : null, all);
     const wrap = h("div", { class: "r4p-tw" }, scroller, back, more);

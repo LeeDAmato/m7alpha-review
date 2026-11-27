@@ -41,14 +41,11 @@
       help: ["Questions? Write to us", "Click Message M7Alpha to send us a note. Click How it works to see these tips again."],
       helpOnly: ["See these tips again", "Click How it works to see these tips again, on any page."],
     },
-    content: {
-      rows: ["Same order as Home", "Each row is one task from your Home page. The rows are in the same order."],
-      find: ["Find a piece fast", "Type a word in the search box to find a piece. Or click a button to see one kind only, like Adverts."],
-      tasks: ["One task at a time", "Click a task to see only its pieces. Click All tasks to see everything again."],
-      tile: ["Take a closer look", "Move your mouse over a picture to see it bigger. Then these buttons show:", "Click the picture to open the full piece."],
-      tileChips: ["Approve", "Comment", "Open"],
-      done: ["Finished work", "Approved and published pieces sit in the last rows. Click one to see its details. You can download the picture there too."],
-      doneHidden: ["Finished work", "To see approved and published pieces, click All tasks. They sit in the last rows. Open one to download it."],
+    content: {      // [27 Nov 2026] Lee: about this page only (filters, a closer look, approve or ask, download and next), four cards
+      find: ["Find a piece fast", "Type a word to search. Or click a button to see one kind, or one task. Click All to see everything again."],
+      tile: ["Take a closer look", "Move your mouse over a picture to see it bigger. Click it to open the full piece."],
+      answer: ["Say yes, or ask for changes", "In the open piece, click Approve if it's ready. Or click Ask for changes and tell us what to fix."],
+      next: ["Save it, then the next one", "Click Download at the top to save every picture at full size. Click Next piece to keep going."],
     },
     calendar: {
       nav: ["Month or week", "Use the arrows to move a month at a time. Click Week to see seven days. Click Today to come back."],
@@ -117,6 +114,16 @@
   const first = (sel, root) => all(sel, root).find(vis) || null;
   const txt = (e) => String((e && e.textContent) || "").replace(/\s+/g, " ").trim();
   const orList = (xs) => (xs.length <= 1 ? xs[0] || "" : xs.slice(0, -1).join(", ") + " or " + xs[xs.length - 1]);
+  function contentTile() {
+    const rows = all("#app .r4p-content > .r4p-row").filter(vis);
+    const inView = (t) => { const r = t.getBoundingClientRect(), sc = t.closest(".r4p-tiles"), sr = sc ? sc.getBoundingClientRect() : r; return r.left >= sr.left - 1 && r.right <= sr.right + 1; };
+    for (const row of rows) {
+      const ts = all("button.r4p-tile:not(.r4p-tilew)", row).filter((t) => vis(t) && inView(t));
+      const t = ts.find((x) => x.querySelector(".r4p-c-wait")) || ts[0];
+      if (t) return t;
+    }
+    return null;
+  }
   const step = (pair, el, extra) => (el ? Object.assign({ t: pair[0], b: pair[1], el }, extra || {}) : null);
   const r4on = () => { try { return !!(window.R4D && R4D.on()) && document.body.classList.contains("r4"); } catch (e) { return false; } };
   const cardSt = () => { try { return window.R4C && R4C._state && R4C._state.root ? R4C._state : null; } catch (e) { return null; } };
@@ -160,33 +167,14 @@
       helpStep,
     ],
     content: [
-      () => step(W.content.rows, first("#app .r4p-content > .r4p-row")),
       () => {
         const r = first("#app .r4p-content"); if (!r) return null;
-        const parts = [first(".r4m-sw", r), first(":scope > .r4p-filters:not(.r4p-ftasks)", r), first(".r4m-types", r)].filter(Boolean);
+        const parts = [first(".r4m-sw", r), ...all(".r4p-filters", r), first(".r4m-types", r)].filter((x) => x && vis(x));
         return parts.length ? step(W.content.find, parts) : null;
       },
-      () => step(W.content.tasks, first("#app .r4p-content .r4p-ftasks")),
-      () => {
-        const rows = all("#app .r4p-content > .r4p-row").filter(vis);
-        const inView = (t) => { const r = t.getBoundingClientRect(), s = t.closest(".r4p-tiles"), sr = s ? s.getBoundingClientRect() : r; return r.left >= sr.left - 1 && r.right <= sr.right + 1; };
-        let tile = null;
-        for (const row of rows) {
-          const ts = all("button.r4p-tile:not(.r4p-tilew)", row).filter((t) => vis(t) && inView(t));
-          tile = ts.find((t) => t.querySelector(".r4p-c-wait")) || ts[0] || null;
-          if (tile) break;
-        }
-        return tile ? step(W.content.tile, tile, { b2: W.content.tile[2], chips: W.content.tileChips }) : null;
-      },
-      () => {
-        // "Approved, waiting to go out" and "Published" (not "We're making your changes": those are not finished)
-        let keys = []; try { keys = R4D.rows().filter((r) => !r.fromTask && r.key !== "r4:changing" && r.pieces.some((x) => /^(approve|choose|scheduled|published)$/.test(x.status))).map((r) => r.key); } catch (e) {}
-        if (!keys.length) return null;
-        const row = all("#app .r4p-content > .r4p-row").find((s) => vis(s) && keys.includes(s.dataset.row));
-        if (row) return step(W.content.done, row);
-        const allTasks = all("#app .r4p-content .r4p-ftasks .r4p-fchip").find((b) => vis(b) && /^All tasks$/.test(txt(b)) && b.getAttribute("aria-pressed") !== "true");
-        return allTasks ? step(W.content.doneHidden, allTasks) : null;
-      },
+      () => { const t = contentTile(); return t ? step(W.content.tile, t) : null; },
+      () => { const t = contentTile(); return t ? step(W.content.answer, t.closest(".r4p-row") || t) : null; },
+      () => step(W.content.next, first("#app .r4p-content > .r4p-row")),
     ],
     calendar: [
       () => step(W.calendar.nav, first("#app .r4p-calnav")),

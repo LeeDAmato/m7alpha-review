@@ -37,6 +37,10 @@
     const now = current();
     if (now && ORDER.includes(now) && !s.has(now)) { try { R4.go(first(s), { replace: true }); } catch (e) {} }
   }
+  // the menu's own styles set display on these buttons, which beats the plain hidden attribute (found 27 Nov on the live site)
+  const css = document.createElement("style");
+  css.textContent = "body.r4only #sidenav .r4-item[hidden], body.r4only #r4ps-tabs .r4ps-tab[hidden] { display: none !important; }";
+  (document.head || document.documentElement).append(css);
   let t = 0;
   const later = () => { if (!t) t = setTimeout(() => { t = 0; apply(); }, 60); };
   new MutationObserver(later).observe(document.documentElement, { childList: true, subtree: true });
