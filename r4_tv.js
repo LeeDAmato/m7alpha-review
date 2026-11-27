@@ -245,7 +245,7 @@
     const heroBox = (ask, details, list, act, label) => E("section", { class: "r4p-hero", "aria-label": "Next for you" },
       E("div", { class: "r4p-herot" }, E("div", { class: "r4p-k", text: "Next for you" }), E("h2", { class: "r4p-ask", text: nw(ask) }), E("div", { class: "r4p-herom", text: details.filter(Boolean).join(" · ") })),
       E("div", { class: "r4p-herobot" }, list.length ? E("div", { class: "r4p-hw" }, ...parts(list)) : E("span", { class: "r4p-hw" }),
-        E("button", { type: "button", class: "r4p-go", onclick: act }, label || "Open", E("i", { "aria-hidden": "true", text: "›" }))));
+        E("button", { type: "button", class: "r4p-go", onclick: act }, label || "Open", E("i", { "aria-hidden": "true" }))));
     if (internal.length) {
       const first = internal.find((i) => dateOf(i));
       hero = heroBox(internal.length === 1 ? "One piece waits for you in Internal review" : `${internal.length} pieces wait for you in Internal review`,

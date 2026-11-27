@@ -190,7 +190,7 @@
         // left column (beside This month and Coming up) and is taller, with the small boxes and Start along its foot
         h("div", { class: "r4p-herobot" },
           parts.length ? h("div", { class: "r4p-hw" }, ...parts.map(([b, t]) => h("div", {}, h("b", { text: b }), h("span", { text: t })))) : h("span", { class: "r4p-hw" }),
-          h("button", { type: "button", class: "r4p-go", onclick: () => startTask(first) }, "Open", h("i", { "aria-hidden": "true", text: "›" }))));      // Lee: "change 'start' to 'open'"
+          h("button", { type: "button", class: "r4p-go", onclick: () => startTask(first) }, "Open", h("i", { "aria-hidden": "true" }))));      // Lee: "change 'start' to 'open'"
     } else {
       hero = h("section", { class: "r4p-hero r4p-calm", "aria-label": "Next for you" },
         h("span", { class: "r4p-tick", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24"><path d="M6 12.5 10.5 17 18.5 7.5"/></svg>' }),

@@ -139,7 +139,8 @@ body.r4.r4tv-running #toast { visibility: hidden !important; }
 body.r4 .r4p-hero.r4cov { position: relative; overflow: hidden; isolation: isolate; }
 body.r4 .r4p-hero.r4cov > .r4cov-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: right center; z-index: -2; opacity: 0; transition: opacity .5s ease; }
 body.r4 .r4p-hero.r4cov > .r4cov-shade { position: absolute; inset: 0; z-index: -1; opacity: 0; transition: opacity .5s ease; pointer-events: none;
-  background: linear-gradient(90deg, rgba(17,17,17,.95) 0%, rgba(17,17,17,.92) 42%, rgba(17,17,17,.78) 55%, rgba(17,17,17,.32) 68%, rgba(17,17,17,0) 80%); }
+  /* [27 Nov 2026] Lee: much lighter, a vignette like the article tiles in Content: dark only behind the words (top left) and the boxes (bottom). */
+  background: radial-gradient(ellipse 78% 125% at 0% 30%, rgba(17,18,20,.88) 0%, rgba(17,18,20,.82) 44%, rgba(17,18,20,.62) 66%, rgba(17,18,20,0) 92%), linear-gradient(0deg, rgba(17,18,20,.6) 0%, rgba(17,18,20,.25) 34%, rgba(17,18,20,0) 58%); }
 body.r4 .r4p-hero.r4cov.r4cov-in > .r4cov-img, body.r4 .r4p-hero.r4cov.r4cov-in > .r4cov-shade { opacity: 1; }
 body.r4 .r4p-hero.r4cov .r4p-herot { max-width: 60%; }
 body.r4 .r4p-hero.r4cov .r4p-herom { white-space: normal; color: #E9E8E4; }
@@ -147,7 +148,7 @@ body.r4 .r4p-hero.r4cov .r4p-herot, body.r4 .r4p-hero.r4cov .r4p-hw > div { text
 body.r4 .r4p-hero.r4cov .r4p-hw > div { background: rgba(17,17,17,.72); border-color: rgba(250,249,246,.16); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 @media (max-width: 900px) {
   /* phones: the words run the full width, so the shade covers it all */
-  body.r4 .r4p-hero.r4cov > .r4cov-shade { background: linear-gradient(180deg, rgba(17,17,17,.9) 0%, rgba(17,17,17,.82) 60%, rgba(17,17,17,.88) 100%); }
+  body.r4 .r4p-hero.r4cov > .r4cov-shade { background: linear-gradient(180deg, rgba(17,18,20,.76) 0%, rgba(17,18,20,.58) 50%, rgba(17,18,20,.74) 100%); }
   body.r4 .r4p-hero.r4cov .r4p-herot { max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { body.r4 .r4p-hero.r4cov > .r4cov-img, body.r4 .r4p-hero.r4cov > .r4cov-shade { transition: none; } }

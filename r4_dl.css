@@ -1,0 +1,26 @@
+/* [PART R4-dl, 27 Nov 2026] The "Download" button on a card's picture and in the full-size viewer. */
+body.r4 .r4c-fit { position: relative; }
+body.r4 .r4dl { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px 0 11px; border-radius: 99px; font: 600 13px/1 Inter, system-ui, sans-serif;
+  text-decoration: none !important; cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+body.r4 .r4dl svg { flex: none; }
+body.r4 .r4dl-box { position: absolute; top: 10px; right: 10px; z-index: 3; background: rgba(250,249,246,.94); color: #111214 !important; border: 1px solid rgba(17,18,20,.12);
+  box-shadow: 0 2px 10px rgba(17,18,20,.18); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); opacity: .92; transition: opacity .15s ease, background .15s ease; }
+body.r4 .r4dl-box:hover { opacity: 1; background: #FAF9F6; }
+body.r4 .r4dl:focus-visible { outline: 2px solid #8CC63F; outline-offset: 2px; }
+body.r4 .r4dl-bar { background: #212124; color: #F2F2F2 !important; border: 1px solid rgba(250,249,246,.14); height: 36px; }
+body.r4 .r4dl-bar:hover { background: #2C2C30; }
+/* a video's own controls sit at the bottom, so the button stays top right; while pin mode is on it steps aside */
+body.r4.r4pin-on .r4dl-box { display: none; }
+@media (max-width: 700px) { body.r4 .r4dl span { display: none; } body.r4 .r4dl { width: 36px; padding: 0; justify-content: center; } }
+/* on the picture it rests as a small round icon, so it covers as little of the artwork as possible; the word shows on hover */
+body.r4 .r4dl-box { width: 36px; height: 36px; padding: 0; justify-content: center; gap: 0; }
+body.r4 .r4dl-box span { display: none; }
+@media (hover: hover) and (min-width: 701px) {
+  body.r4 .r4dl-box:hover, body.r4 .r4dl-box:focus-visible { width: auto; padding: 0 13px 0 11px; gap: 7px; }
+  body.r4 .r4dl-box:hover span, body.r4 .r4dl-box:focus-visible span { display: inline; }
+}
+/* "Download all N" under the picture, for a piece with more than one file */
+body.r4 .r4dl-all { align-self: center; margin: 8px auto 0; background: var(--c-card, #FAF9F6); color: var(--c-ink, #111214) !important; border: 1px solid var(--c-line, rgba(17,18,20,.16)); flex: none; }
+body.r4 .r4dl-all:hover { border-color: #8CC63F; }
+body.r4 .r4dl-all.busy { opacity: .6; pointer-events: none; }
+@media (max-width: 700px) { body.r4 .r4dl-all { width: auto !important; padding: 0 13px 0 11px !important; } body.r4 .r4dl-all span { display: inline !important; } }

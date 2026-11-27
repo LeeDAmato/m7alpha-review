@@ -1,0 +1,29 @@
+/* [PART R4-zoom, 27 Nov 2026] full-size picture viewer (r4_zoom.js). Also carries the class "zoom", so the page's own
+   "something is on top" checks see it; the rules below replace the old .zoom look. */
+html body .r4z.zoom { position: fixed; inset: 0; z-index: 2147483000; background: #121212 !important; overflow: hidden; display: flex; flex-direction: column;
+  font-family: Inter, system-ui, sans-serif; color: #F4F4F2; outline: none; }
+body .r4z .r4z-bar { display: flex; align-items: center; gap: 6px; padding: 10px 12px 10px 18px; background: #181818; border-bottom: 1px solid #2A2A2D; flex: none; }
+body .r4z .r4z-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 8px; }
+body .r4z .r4z-pct { min-width: 52px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; color: #CFCFCB; }
+body .r4z .r4z-b { appearance: none; border: 1px solid #333336; background: #212124; color: #F4F4F2; border-radius: 999px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font: 600 13px/1 Inter, system-ui, sans-serif; }
+body .r4z .r4z-b:hover { background: #2C2C30; }
+body .r4z .r4z-b:focus-visible { outline: 2px solid #8CC63F; outline-offset: 2px; }
+body .r4z .r4z-ic { width: 36px; padding: 0; }
+body .r4z .r4z-tx { padding: 0 14px; }
+body .r4z .r4z-x { margin-left: 6px; }
+body .r4z .r4z-view { position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: zoom-in; }
+body .r4z.r4z-big .r4z-view { cursor: grab; }
+body .r4z.r4z-big .r4z-view.r4z-down { cursor: grabbing; }
+body .r4z .r4z-view img { position: absolute; left: 0; top: 0; max-width: none !important; max-height: none !important; margin: 0;
+  transform-origin: 0 0; user-select: none; -webkit-user-drag: none; image-rendering: auto; opacity: 0; transition: opacity .15s; }
+body .r4z.r4z-ready .r4z-view img { opacity: 1; }
+body .r4z .r4z-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); margin: 0; padding: 7px 14px; border-radius: 999px;
+  background: rgba(24,24,24,.86); color: #CFCFCB; font-size: 12px; white-space: nowrap; pointer-events: none; animation: r4zfade 4s forwards; }
+@keyframes r4zfade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+/* the card's pictures say they open */
+body.r4:not(.r4pin-on) .r4c-fit img[data-r4z], body.r4:not(.r4pin-on) .r4c-stage img[data-r4z] { cursor: zoom-in; }
+@media (max-width: 700px) {
+  body .r4z .r4z-tx { display: none; }
+  body .r4z .r4z-hint { font-size: 11px; white-space: normal; text-align: center; width: max-content; max-width: 88vw; }
+}
