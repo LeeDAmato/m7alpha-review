@@ -329,7 +329,7 @@
     const art = E("div", { class: "r4c-art" }); C.refs.art = art;
     drawArt(p, shape);
     // the comment box sits right under the answer (Ask for changes needs it), then the details and the caption
-    const col = E("div", { class: "r4c-col" }, answerBox(p, shape), commentsBox(p, shape), pinsBox(p), detailsBox(p), captionBox(p));
+    const col = E("div", { class: "r4c-col" }, answerBox(p, shape), captionBox(p), commentsBox(p, shape), pinsBox(p), detailsBox(p));
     return E("div", { class: "r4c-body" }, flashLine(), E("div", { class: "r4c-split" }, art, col));
   }
   // ---------- pins on the artwork, Figma style (Lee, 26 Nov 2026; r4_pin.js draws them) ----------
@@ -387,7 +387,8 @@
   }
   function drawArt(p, shape) {
     const art = C.refs.art; if (!art) return;
-    if (shape === "two") {
+    // the two sizes side by side on a laptop only; on a phone they are slides, one size at a time (Lee, 27 Nov 2026)
+    if (shape === "two" && !matchMedia("(max-width: 900px)").matches) {
       const s = sizesOf(p);
       const figs = [[s.portrait, "Portrait", "for feeds"], [s.tall, "Tall", "for Stories and Reels"]].map(([m, a, b]) => {
         const box = E("div", { class: "r4c-fit" }, mediaEl(m, `${cleanTitle(p.title)}, ${a.toLowerCase()} size`, p));
@@ -403,7 +404,9 @@
     const box = E("div", { class: "r4c-fit" }, mediaEl(m[k], cleanTitle(p.title) + (n > 1 ? `, ${U.toLowerCase()} ${k + 1} of ${n}` : ""), p));
     if (n > 1) box.append(roundBtn("prev", `Previous ${U.toLowerCase()}`, () => setSlide(k - 1), k <= 0), roundBtn("next", `Next ${U.toLowerCase()}`, () => setSlide(k + 1), k >= n - 1));
     const stage = E("div", { class: "r4c-stage" }, box);
-    art.replaceChildren(...[stage, n > 1 ? E("p", { class: "r4c-under", "aria-live": "polite", text: `${U} ${k + 1} of ${n}` + (lab(m[k]) && !/^(slide|page|post|feed)\s*\d*$/i.test(lab(m[k])) ? " · " + lab(m[k]) : "") }) : null, pinHint()].filter(Boolean));
+    // a two-size advert on a phone: name the size under the picture, as the laptop's captions do
+    const sz = shape === "two" ? sizesOf(p) : null, which = sz ? (m[k] === sz.portrait ? "Portrait · for feeds" : m[k] === sz.tall ? "Tall · for Stories and Reels" : "") : "";
+    art.replaceChildren(...[stage, n > 1 ? E("p", { class: "r4c-under", "aria-live": "polite", text: which ? `${which} (${k + 1} of ${n})` : `${U} ${k + 1} of ${n}` + (lab(m[k]) && !/^(slide|page|post|feed)\s*\d*$/i.test(lab(m[k])) ? " · " + lab(m[k]) : "") }) : null, pinHint()].filter(Boolean));
     if (m[k] && m[k].type === "image") pinsOn(p, box, m[k]);
     const pl = C.card && C.card.querySelector(".r4pin-listbox"); if (pl) pl.replaceWith(pinsBox(p));
     watchFit(stage, () => fitBoxes(stage, [box], [ratioFor(m[k])], 0, 0));

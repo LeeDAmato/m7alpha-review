@@ -723,7 +723,7 @@
     if (window.R4PIN && m && m.type === "image") R4PIN.attach(box, { pins: pinsOf(i, m), placeholder: "Write your comment on this spot", onPost: canAct() && !i.dropped_at ? (x, y, t) => pinSave(i, m, x, y, t) : null });
     if (n > 1) art.append(E("p", { class: "r4c-under", text: `${sl + 1} of ${n}` + (m && m.label ? " · " + String(m.label).replace(/^\s*\d+[\s.:)-]+/, "") : "") }));
     // the right column: the decision, a comment, the tools, the details, the caption
-    const col = E("div", { class: "r4c-col" }, decisionBox(i), commentBox(i), toolsBox(i), pinsBox(i, m), c.info ? infoBox(i) : null, detailsBox(i), captionBox(i));
+    const col = E("div", { class: "r4c-col" }, decisionBox(i), captionBox(i), commentBox(i), toolsBox(i), pinsBox(i, m), c.info ? infoBox(i) : null, detailsBox(i));
     const flash = c.flash ? E("div", { class: "r4c-flash", role: "status" }, ic(SVG.check, "r4c-tick"), E("p", {}, E("b", { text: c.flash }))) : null;
     const keepY = card.querySelector(".r4c-col")?.scrollTop || 0;
     card.replaceChildren(head, E("div", { class: "r4c-body" }, flash, E("div", { class: "r4c-split" }, art, col)));

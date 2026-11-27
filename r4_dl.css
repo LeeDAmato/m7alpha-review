@@ -24,3 +24,7 @@ body.r4 .r4dl-all { align-self: center; margin: 8px auto 0; background: var(--c-
 body.r4 .r4dl-all:hover { border-color: #8CC63F; }
 body.r4 .r4dl-all.busy { opacity: .6; pointer-events: none; }
 @media (max-width: 700px) { body.r4 .r4dl-all { width: auto !important; padding: 0 13px 0 11px !important; } body.r4 .r4dl-all span { display: inline !important; } }
+/* in the card's top bar, left of "Previous": the same shape as the bar's other buttons */
+body.r4 .r4dl-all.r4dl-top { margin: 0; align-self: center; height: 34px; }
+/* under the picture (phone): centred */
+body.r4 .r4c-art > .r4dl-all { display: flex; width: max-content; margin: 10px auto 0; }

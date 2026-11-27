@@ -55,28 +55,29 @@
       if (n === files.length - 1) setTimeout(() => btn.classList.remove("busy"), 600);
     }, n * 700));
   }
+  // where the one button goes: the card's top bar, left of "Previous" (Lee, 27 Nov 2026); on a phone (under 900 px, where
+  // the top bar is the phone's own) it sits under the picture
   function markAll() {
-    const art = document.querySelector("#r4tvc .r4c-art, .r4c-root .r4c-art"); if (!art) return;
+    const card = document.querySelector("#r4tvc .r4c-card, .r4c-root .r4c-card"); if (!card) return;
+    const art = card.querySelector(".r4c-art"), hr = card.querySelector(":scope > .r4c-head > .r4c-hr");
+    const phone = matchMedia("(max-width: 900px)").matches;
+    const home = phone || !hr ? art : hr;
     const it = openPiece(), files = it ? (it.media || []).filter((m) => m && m.path && m.type !== "text") : [];
-    const have = art.querySelector(":scope > .r4dl-all");
-    if (files.length < 2) { if (have) have.remove(); return; }
-    if (have && have.dataset.for === it.id + files.length) return;
+    const have = card.querySelector(".r4dl-all");
+    if (!files.length || !home) { if (have) have.remove(); return; }
+    if (have && have.dataset.for === it.id + files.length && have.parentElement === home) return;
     if (have) have.remove();
-    const b = document.createElement("button"); b.type = "button"; b.className = "r4dl r4dl-all"; b.dataset.for = it.id + files.length;
-    b.innerHTML = ICON + `<span>Download all ${files.length}</span>`; b.title = `Download all ${files.length} files at full quality`;
+    const b = document.createElement("button"); b.type = "button"; b.className = "r4dl r4dl-all" + (home === hr ? " r4dl-top" : ""); b.dataset.for = it.id + files.length;
+    const word = files.length > 1 ? `Download all ${files.length}` : "Download";
+    b.innerHTML = ICON + `<span>${word}</span>`; b.title = word + " at full quality";
     b.addEventListener("click", (e) => { e.stopPropagation(); downloadAll(it, b); });
-    art.append(b);
+    if (home === hr) hr.prepend(b); else home.append(b);
   }
   function mark() {
     markAll();
-    document.querySelectorAll(".r4c-fit").forEach((box) => {
-      const media = box.querySelector(":scope > img, :scope > video, :scope img, :scope video");
-      const have = box.querySelector(":scope > .r4dl");
-      if (!media || !srcOf(media)) { if (have) have.remove(); return; }
-      if (have && have.dataset.for === srcOf(media)) return;
-      if (have) have.remove();
-      const b = button(media, "r4dl-box"); b.dataset.for = srcOf(media); box.append(b);
-    });
+    // one Download button per card (Lee, 27 Nov 2026: "only one download button, and it automatically downloads every
+    // image/reel in a card"): the small icons that sat on each picture are gone
+    document.querySelectorAll(".r4c-fit > .r4dl-box").forEach((b) => b.remove());
     // the full-size viewer's bar
     const z = document.querySelector(".r4z .r4z-bar");
     if (z && !z.querySelector(".r4dl")) {
