@@ -49,6 +49,30 @@
   // and its title says it is one.
   const CHECK_WORDS = /\b(check|checks|test|tests|proof|screens?|screenshots?|QA|verification|before and after|measure|contrast|layout)\b/i;
   const chk = (i) => !!i && (i.kind === "proof" || (!i.kind && CHECK_WORDS.test(String(i.title || ""))));
+  // [27 Nov 2026] Lee: "remove the option for a card to be 'team only'. cards are automatically team only prior to sending for
+  // client review". Every real piece (not one of our checks or proofs) can now be moved to client review or approved
+  // without the client, even if it was uploaded as team-only; moving or approving such a piece first makes it a client
+  // piece (set_item_audience), so it reaches the client's page. Our checks keep the single Approve.
+  try {
+    const STAGES = ["needs_lee", "lee_approved"];
+    // a piece approved while it was team-only (TME Gozo collage, 27 Nov) can still be moved to client review
+    WACT.move.can = (i) => !chk(i) && (STAGES.includes(i.stage) || ((i.audience === "team" || i.__wasTeam) && i.stage === "approved"));
+    WACT.skip.can = (i) => !chk(i) && STAGES.includes(i.stage);
+    WACT.ok.can = (i) => chk(i) && i.audience === "team" && ["needs_lee", "with_team"].includes(i.stage);
+    const baseRun = workRun;
+    workRun = async function (kind, pieces, opt) {
+      if ((kind === "move" || kind === "skip") && Array.isArray(pieces)) {
+        for (const p of pieces) {
+          if (p && p.audience === "team" && !chk(p)) {
+            let r = null; try { r = await rpc("set_item_audience", { p_item: p.id, p_audience: "client" }); } catch (e) {}
+            if (!(r && r.ok)) { try { showToast(`“${p.title}” didn't save. Please try again.`); hideToastLater(5000); } catch (e) {} return; }
+            p.audience = "client"; p.__wasTeam = true;      // workRun reads the piece again; this keeps an approved one movable
+          }
+        }
+      }
+      return baseRun(kind, pieces, opt);
+    };
+  } catch (e) { console.warn("R4-tv team-only", e); }
   const pool = () => { try { return W.items.slice(); } catch (e) { return []; } };
   const byId = (id) => { try { return W.items.find((x) => x.id === id) || (W.dropped || []).find((x) => x.id === id) || null; } catch (e) { return null; } };
   const typeOfW = (i) => { if (chk(i)) return "Our checks"; try { return tileKind(i.kind, i.group_name, i.media || [], i.title) || workType(i) || "Post"; } catch (e) { return "Post"; } };
@@ -414,7 +438,7 @@
   // Put back (workRun "drop" / "back"). Nothing is deleted: a dropped piece waits under Dropped and can come back.
   const SAY = { move: "Move to client review", skip: "Approve, skip client", ok: "Approve", pull: "Pull back from client review", drop: "Remove", back: "Bring back" };
   const ONLYFOR = { move: "is only for pieces in Internal review that are for the client", skip: "is only for pieces in Internal review that are for the client",
-    ok: "is only for team-only pieces", pull: "is only for pieces in Client review", drop: "is for pieces that are not in Dropped already", back: "is only for pieces in Dropped" };
+    ok: "is only for our own checks", pull: "is only for pieces in Client review", drop: "is for pieces that are not in Dropped already", back: "is only for pieces in Dropped" };
   const DOING = { move: "Sending", skip: "Approving", ok: "Approving", pull: "Pulling back", drop: "Removing", back: "Bringing back" };
   const KINDS = ["move", "skip", "ok", "pull", "drop", "back"];
   const CAN = (k, i) => { try { if (k === "back") return !!i.dropped_at; if (i.dropped_at) return false; return k === "drop" ? true : WACT[k].can(i); } catch (e) { return false; } };
@@ -752,7 +776,7 @@
     let lead = "";
     if (s === "dropped") lead = "This piece was dropped. Put it back from its tile's ⋯ menu, under Dropped.";
     else if (WACT.move.can(i)) lead = `Waiting for you. Move it in front of ${who}, or approve it and keep it with us.`;
-    else if (WACT.ok.can(i)) lead = "A team-only piece. Approve it, or comment to send it back to the team.";
+    else if (WACT.ok.can(i)) lead = "One of our own checks. Approve it, or comment to send it back to the team.";
     else if (WACT.pull.can(i)) lead = `With ${who}, waiting for their answer.`;
     else if (s === "wip") lead = "We're working on it. A comment goes to the session that made it.";
     else if (s === "approved") lead = i.noclient ? "Approved, and kept with us (the client was skipped)." : `Approved${i.stage === "approved" && i.audience !== "team" ? " by " + who : ""}. Ready to schedule.`;
